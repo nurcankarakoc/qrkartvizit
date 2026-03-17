@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 // Admin check
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
@@ -105,12 +106,14 @@ $message = $_GET['msg'] ?? '';
                         <?php if($dispute['status'] == 'pending'): ?>
                         <div class="resolution-area">
                             <form action="../processes/admin_actions.php" method="POST">
+                                <?php echo csrf_input(); ?>
                                 <input type="hidden" name="action" value="resolve_dispute">
                                 <input type="hidden" name="dispute_id" value="<?php echo $dispute['id']; ?>">
                                 <input type="hidden" name="resolution" value="favor_customer">
                                 <button type="submit" class="btn-resolve customer"><i data-lucide="check-circle" style="width: 14px; vertical-align: middle; margin-right: 0.5rem;"></i> Müşteriyi Haklı Bul (Revize İade Et)</button>
                             </form>
                             <form action="../processes/admin_actions.php" method="POST">
+                                <?php echo csrf_input(); ?>
                                 <input type="hidden" name="action" value="resolve_dispute">
                                 <input type="hidden" name="dispute_id" value="<?php echo $dispute['id']; ?>">
                                 <input type="hidden" name="resolution" value="favor_designer">

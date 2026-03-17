@@ -37,19 +37,23 @@ CREATE TABLE IF NOT EXISTS `packages` (
 CREATE TABLE IF NOT EXISTS `orders` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
-  `package_id` INT NOT NULL,
+  `package` VARCHAR(50) DEFAULT 'smart' COMMENT 'Legacy slug: classic|panel|smart',
+  `package_id` INT DEFAULT NULL COMMENT 'Normalized package reference (optional)',
   `company_name` VARCHAR(255) DEFAULT NULL,
   `job_title` VARCHAR(255) DEFAULT NULL,
   `logo_path` VARCHAR(255) DEFAULT NULL,
+  `draft_path` VARCHAR(255) DEFAULT NULL,
   `design_notes` TEXT DEFAULT NULL,
-  `status` ENUM('pending_payment', 'pending_design', 'designing', 'awaiting_approval', 'revision_requested', 'approved', 'printing', 'shipping', 'completed', 'disputed') DEFAULT 'pending_payment',
+  `status` ENUM('pending', 'pending_payment', 'pending_design', 'designing', 'awaiting_approval', 'revision_requested', 'approved', 'printing', 'shipping', 'completed', 'disputed') DEFAULT 'pending',
+  `revision_count` INT DEFAULT 2 COMMENT 'Legacy remaining revision rights',
   `current_revision_count` INT DEFAULT 0,
   `total_allowed_revisions` INT DEFAULT 2,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`),
-  INDEX (`status`)
+  FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE SET NULL,
+  INDEX (`status`),
+  INDEX (`package`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Dijital Profiller
@@ -112,6 +116,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `transaction_id` VARCHAR(100) DEFAULT NULL,
   `amount` DECIMAL(10, 2) NOT NULL,
   `currency` VARCHAR(10) DEFAULT 'TRY',
+  `type` ENUM('order', 'extra_revision', 'subscription_renewal') DEFAULT 'order' COMMENT 'Legacy compatibility',
   `payment_type` ENUM('order', 'extra_revision', 'subscription_renewal') DEFAULT 'order',
   `status` ENUM('success', 'failed', 'refunded') DEFAULT 'success',
   `payment_details` JSON DEFAULT NULL,
@@ -150,10 +155,14 @@ CREATE TABLE IF NOT EXISTS `system_logs` (
   INDEX (`action`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Varsayılan Paketleri Ekleme
-INSERT INTO `packages` (`name`, `slug`, `price`, `has_physical_print`, `has_digital_profile`, `has_qr_code`, `included_revisions`) VALUES
-('Klasik Paket', 'classic', 299.00, 1, 0, 0, 2),
-('Sadece Panel', 'panel', 199.00, 0, 1, 0, 0),
-('Akıllı Paket', 'smart', 499.00, 1, 1, 1, 2);
+-- Varsayilan Paketleri Ekleme
+INSERT INTO `packages` (`name`, `slug`, `price`, `included_revisions`) VALUES
+('Klasik Paket', 'classic', 299.00, 2),
+('Sadece Panel', 'panel', 199.00, 0),
+('Akilli Paket', 'smart', 499.00, 2)
+ON DUPLICATE KEY UPDATE
+`name` = VALUES(`name`),
+`price` = VALUES(`price`),
+`included_revisions` = VALUES(`included_revisions`);
 
 SET FOREIGN_KEY_CHECKS = 1;

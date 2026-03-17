@@ -27,6 +27,9 @@
                 <a href="#iletisim">İletişim</a>
             </div>
             <div class="nav-btns">
+                <button class="mobile-menu-btn" aria-label="Menü">
+                    <i data-lucide="menu"></i>
+                </button>
                 <button class="theme-switch"><i data-lucide="sun"></i></button>
                 <a href="auth/login.php" class="btn-outline-sm">Giriş Yap</a>
                 <a href="auth/register.php" class="btn-dark-sm">Başvuru Yap</a>

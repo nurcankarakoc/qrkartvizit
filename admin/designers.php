@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 // Admin check
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
@@ -108,6 +109,7 @@ $designers = $stmt_designers->fetchAll();
                     <div class="add-designer-form">
                         <h2>Yeni Tasarımcı Ekle</h2>
                         <form action="../processes/admin_actions.php" method="POST">
+                            <?php echo csrf_input(); ?>
                             <input type="hidden" name="action" value="add_designer">
                             <div class="form-group">
                                 <label>Ad Soyad</label>

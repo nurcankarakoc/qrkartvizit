@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 // Designer check
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {
@@ -28,11 +29,21 @@ if (!$order) {
     exit();
 }
 
+function table_has_column(PDO $pdo, string $table, string $column): bool
+{
+    $table_escaped = str_replace('`', '``', $table);
+    $column_escaped = str_replace("'", "''", $column);
+    $stmt = $pdo->query("SHOW COLUMNS FROM `{$table_escaped}` LIKE '{$column_escaped}'");
+    return (bool)$stmt->fetch();
+}
+
 // Smart Package check
-$is_smart = (stripos($order['package'], 'Akıllı') !== false || stripos($order['package'], 'smart') !== false);
+$package_value = (string)($order['package'] ?? '');
+$is_smart = (stripos($package_value, 'Akilli') !== false || stripos($package_value, 'smart') !== false);
 
 // Fetch profile if exists (for QR code)
-$stmt_profile = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+$profile_order_col = table_has_column($pdo, 'profiles', 'created_at') ? 'created_at' : 'id';
+$stmt_profile = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ? ORDER BY {$profile_order_col} DESC LIMIT 1");
 $stmt_profile->execute([$order['user_id']]);
 $profile = $stmt_profile->fetch();
 
@@ -70,31 +81,31 @@ if ($order['status'] == 'pending') {
         .card-sidebar-info { display: flex; flex-direction: column; gap: 2rem; }
         .info-box { background: #fff; padding: 2rem; border-radius: 24px; box-shadow: var(--card-shadow); }
         .info-box h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
-        .info-box h3 i { color: var(--primary); width: 20px; }
+        .info-box h3 i { color: var(--gold); width: 20px; }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.95rem; }
         .detail-row span:first-child { color: #64748b; font-weight: 500; }
         .detail-row span:last-child { color: #1e293b; font-weight: 700; }
-        .design-notes { background: #f8fafc; padding: 1.5rem; border-radius: 16px; border-left: 4px solid var(--primary); margin-top: 2rem; line-height: 1.6; color: #475569; }
+        .design-notes { background: #f8fafc; padding: 1.5rem; border-radius: 16px; border-left: 4px solid var(--gold); margin-top: 2rem; line-height: 1.6; color: #475569; }
         .logo-preview { margin-top: 2rem; }
         .logo-preview img { max-width: 200px; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc; }
         .upload-zone { margin-top: 3rem; border: 2px dashed #cbd5e1; padding: 3rem; border-radius: 24px; text-align: center; transition: all 0.3s; cursor: pointer; position: relative; }
-        .upload-zone:hover { border-color: var(--primary); background: #f0f9ff; }
+        .upload-zone:hover { border-color: var(--gold); background: #fffbeb; }
         .upload-zone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .upload-zone i { font-size: 3rem; color: #94a3b8; display: block; margin: 0 auto 1.5rem; }
         .upload-zone p { font-weight: 700; color: #475569; }
-        .btn-submit-draft { width: 100%; padding: 1.2rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 1.5rem; transition: all 0.3s; }
-        .btn-submit-draft:hover { background: #2563eb; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2); }
+        .btn-submit-draft { width: 100%; padding: 1.2rem; background: var(--navy-blue); color: #fff; border: none; border-radius: 14px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 1.5rem; transition: all 0.3s; }
+        .btn-submit-draft:hover { background: var(--navy-dark); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .qr-area { text-align: center; padding: 1.5rem; background: #f8fafc; border-radius: 16px; margin-top: 1rem; }
         .qr-area img { width: 150px; height: 150px; display: block; margin: 0 auto 1rem; }
-        .qr-area a { font-size: 0.85rem; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .qr-area a { font-size: 0.85rem; font-weight: 700; color: var(--gold); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .draft-history { margin-top: 3rem; }
         .draft-card { display: flex; align-items: center; gap: 1.5rem; padding: 1.2rem; background: #f8fafc; border-radius: 16px; margin-bottom: 1rem; }
         .draft-thumb { width: 80px; height: 80px; background: #e2e8f0; border-radius: 10px; overflow: hidden; }
         .draft-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .draft-info { flex-grow: 1; }
         .draft-status.approved { color: #16a34a; font-weight: 700; }
-        .draft-status.pending { color: #3b82f6; font-weight: 700; }
-        .status-chip { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
+        .draft-status.pending { color: var(--navy-blue); font-weight: 700; }
+        .status-chip { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #eff6ff; color: var(--navy-blue); }
     </style>
 </head>
 <body class="dashboard-body">
@@ -132,13 +143,13 @@ if ($order['status'] == 'pending') {
                 <a href="dashboard.php" class="btn-action">
                     <i data-lucide="arrow-left" style="width: 16px; margin-right: 0.5rem; vertical-align: middle;"></i> Geri Dön
                 </a>
-                <div class="order-id-badge">Sipariş ID: #<?php echo $order_id; ?></div>
+                <div class="order-id-badge" style="font-weight: 800; color: var(--navy-blue);">Sipariş ID: #<?php echo $order_id; ?></div>
             </div>
 
             <div class="order-grid">
                 <div class="main-pane">
                     <div class="card-details">
-                        <h1>Tasarım Bilgileri</h1>
+                        <h1 style="color: var(--navy-blue); margin-bottom: 2rem;">Tasarım Bilgileri</h1>
                         <div class="design-notes"><strong>Müşteri Notu:</strong><br><?php echo nl2br(htmlspecialchars($order['design_notes'] ?: 'Not eklenmemiş.')); ?></div>
 
                         <?php if ($order['logo_path']): ?>
@@ -165,15 +176,16 @@ if ($order['status'] == 'pending') {
                         <?php endif; ?>
 
                         <div class="upload-section">
-                            <h2 style="margin-top: 3rem; margin-bottom: 1.5rem;">Yeni Taslak Yükle</h2>
+                            <h2 style="margin-top: 3rem; margin-bottom: 1.5rem; color: var(--navy-dark);">Yeni Taslak Yükle</h2>
                             <form action="../processes/designer_upload.php" method="POST" enctype="multipart/form-data">
+                                <?php echo csrf_input(); ?>
                                 <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
                                 <div class="upload-zone" id="uploadZone">
                                     <i data-lucide="upload-cloud"></i>
                                     <p>Taslak Dosyasını Buraya Sürükleyin veya Tıklayın</p>
                                     <input type="file" name="draft_file" id="draftFile" required>
                                 </div>
-                                <div id="fileNameDisplay" style="margin-top: 1rem; font-weight: 700; color: var(--primary); display: none;"></div>
+                                <div id="fileNameDisplay" style="margin-top: 1rem; font-weight: 700; color: var(--gold); display: none;"></div>
                                 <button type="submit" class="btn-submit-draft">Taslağı Müşteriye Gönder</button>
                             </form>
                         </div>
@@ -185,13 +197,13 @@ if ($order['status'] == 'pending') {
                         <div class="info-box">
                             <h3><i data-lucide="user"></i> Müşteri Bilgileri</h3>
                             <div class="detail-row"><span>Ad Soyad:</span><span><?php echo htmlspecialchars($order['customer_name']); ?></span></div>
-                            <div class="detail-row"><span>Şirket:</span><span><?php echo htmlspecialchars($order['company_name']); ?></span></div>
+                            <div class="detail-row"><span>Email:</span><span><?php echo htmlspecialchars($order['customer_email']); ?></span></div>
                         </div>
                         <div class="info-box">
                             <h3><i data-lucide="package"></i> Sipariş Özeti</h3>
-                            <div class="detail-row"><span>Paket:</span><span><?php echo htmlspecialchars($order['package']); ?></span></div>
+                            <div class="detail-row"><span>Paket:</span><span><?php echo htmlspecialchars($order['package'] ?? 'classic'); ?></span></div>
                             <div class="detail-row"><span>Durum:</span><span class="status-chip"><?php echo htmlspecialchars($order['status']); ?></span></div>
-                            <div class="detail-row"><span>Kalan Revize:</span><span><?php echo $order['revision_count']; ?></span></div>
+                            <div class="detail-row"><span>Kalan Revize:</span><span><?php echo (int)($order['revision_count'] ?? 0); ?></span></div>
                         </div>
                     </div>
                 </div>

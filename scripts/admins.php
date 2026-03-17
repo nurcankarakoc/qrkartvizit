@@ -1,9 +1,12 @@
 <?php
-require_once 'core/db.php';
+require_once __DIR__ . '/../core/db.php';
 
 $users = [
-    ['Admin', 'admin@zerosoft.com', 'admin123'],
-    ['Test Account', 'test@admin.com', 'admin']
+    [
+        getenv('ADMIN_NAME') ?: 'Admin',
+        getenv('ADMIN_EMAIL') ?: 'admin@zerosoft.local',
+        getenv('ADMIN_PASSWORD') ?: bin2hex(random_bytes(6))
+    ]
 ];
 
 foreach ($users as $u) {

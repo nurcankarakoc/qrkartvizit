@@ -38,12 +38,19 @@ $status_map = [
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        :root {
+            --sidebar-width: 280px;
+            --sidebar-bg: #0A2F2F;
+            --content-bg: #f8fafc;
+        }
         .badge { padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
         .status-badge.pending { background: #fef9c3; color: #a16207; }
-        .status-badge.designing { background: #eff6ff; color: #1d4ed8; }
-        .status-badge.awaiting_approval { background: #fef2f2; color: #b91c1c; }
+        .status-badge.designing { background: #eff6ff; color: var(--navy-blue); }
+        .status-badge.awaiting_approval { background: #fff7ed; color: var(--gold); }
         .status-badge.approved { background: #dcfce7; color: #166534; }
-        .status-badge.completed { background: #f0fdf4; color: #16a34a; }
+        .status-badge.completed { background: #f1f5f9; color: #475569; }
+        .btn-save { background: #0A2F2F; color: #fff; border: none; padding: 1rem 2.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .btn-save:hover { background: #072424; transform: translateY(-2px); }
     </style>
 </head>
 <body class="dashboard-body">
@@ -108,7 +115,7 @@ $status_map = [
                                         <?php echo $status_map[$order['status']] ?? $order['status']; ?>
                                     </span>
                                 </td>
-                                <td><?php echo $order['revision_count']; ?> Hak</td>
+                                <td><?php echo (int)($order['revision_count'] ?? 0); ?> Hak</td>
                                 <td><?php echo date('d.m.Y', strtotime($order['created_at'])); ?></td>
                                 <td><a href="#" class="btn-action">Detay</a></td>
                             </tr>

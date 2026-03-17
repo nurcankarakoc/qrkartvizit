@@ -1,18 +1,28 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 // Admin check
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     die("Yetkisiz erişim.");
 }
 
+verify_csrf_or_redirect('../admin/dashboard.php?error=csrf');
+
 $action = $_POST['action'] ?? '';
 
 if ($action === 'add_designer') {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $raw_password = $_POST['password'] ?? '';
+
+    if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($raw_password) < 6) {
+        header("Location: ../admin/designers.php?msg=invalid");
+        exit();
+    }
+
+    $password = password_hash($raw_password, PASSWORD_DEFAULT);
 
     try {
         $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'designer')");
@@ -25,8 +35,13 @@ if ($action === 'add_designer') {
 }
 
 if ($action === 'resolve_dispute') {
-    $dispute_id = $_POST['dispute_id'];
-    $resolution = $_POST['resolution']; // favor_customer, favor_designer, closed
+    $dispute_id = (int)($_POST['dispute_id'] ?? 0);
+    $resolution = $_POST['resolution'] ?? ''; // favor_customer, favor_designer, closed
+
+    if ($dispute_id <= 0 || !in_array($resolution, ['favor_customer', 'favor_designer'], true)) {
+        header("Location: ../admin/disputes.php?msg=invalid");
+        exit();
+    }
     
     try {
         $pdo->beginTransaction();

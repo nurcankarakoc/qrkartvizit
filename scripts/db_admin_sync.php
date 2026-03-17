@@ -1,5 +1,5 @@
 <?php
-require_once 'core/db.php';
+require_once __DIR__ . '/../core/db.php';
 
 try {
     // 1. Packages Table
@@ -26,7 +26,8 @@ try {
       `user_id` INT NOT NULL,
       `order_id` INT DEFAULT NULL,
       `amount` DECIMAL(10, 2) NOT NULL,
-      `type` ENUM('order', 'extra_revision') DEFAULT 'order',
+      `type` ENUM('order', 'extra_revision', 'subscription_renewal') DEFAULT 'order',
+      `payment_type` ENUM('order', 'extra_revision', 'subscription_renewal') DEFAULT 'order',
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 

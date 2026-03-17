@@ -1,10 +1,14 @@
-<?php include '../core/db.php'; ?>
+<?php
+require_once '../core/db.php';
+require_once '../core/security.php';
+ensure_session_started();
+?>
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Başvuru Yap — QR Kartvizit Platformu</title>
+    <title>Başvuru Yap — Zerosoft</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,13 +16,16 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #3b82f6, #06b6d4);
-            --dark-bg: #0f172a;
+            --navy-blue: #0A2F2F;
+            --navy-dark: #072424;
+            --gold: #A6803F;
+            --gold-light: #C5A059;
         }
 
         body {
             background: #f8fafc;
             color: #1e293b;
+            font-family: 'Inter', sans-serif;
         }
 
         .auth-layout {
@@ -40,18 +47,6 @@
 
         .auth-sidebar-content {
             margin-top: 4rem;
-        }
-
-        .auth-sidebar::before {
-            content: "";
-            position: absolute;
-            top: -10%;
-            right: -10%;
-            width: 300px;
-            height: 300px;
-            background: rgba(59, 130, 246, 0.1);
-            filter: blur(80px);
-            border-radius: 50%;
         }
 
         .auth-sidebar h2 {
@@ -76,7 +71,7 @@
         }
 
         .benefit-list i {
-            color: var(--yellow);
+            color: var(--gold);
         }
 
         .auth-main {
@@ -168,6 +163,7 @@
             font-size: 2.5rem;
             font-weight: 800;
             margin-bottom: 0.5rem;
+            color: var(--navy-blue);
         }
 
         .form-header p {
@@ -175,7 +171,6 @@
             font-size: 1.1rem;
         }
 
-        /* FORM SECTIONS HIDDEN BY DEFAULT */
         .form-step {
             display: none;
             animation: fadeIn 0.5s ease;
@@ -218,9 +213,9 @@
         }
 
         .package-card.active {
-            border-color: var(--navy-blue);
-            background: rgba(10, 47, 47, 0.02);
-            box-shadow: 0 10px 20px rgba(10, 47, 47, 0.05);
+            border-color: var(--gold);
+            background: rgba(166, 128, 63, 0.02);
+            box-shadow: 0 10px 20px rgba(166, 128, 63, 0.05);
         }
 
         .package-card h4 {
@@ -267,9 +262,9 @@
 
         .form-control:focus {
             outline: none;
-            border-color: var(--navy-blue);
+            border-color: var(--gold);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(10, 47, 47, 0.05);
+            box-shadow: 0 0 0 4px rgba(166, 128, 63, 0.1);
         }
 
         .file-upload-box {
@@ -283,8 +278,8 @@
         }
 
         .file-upload-box:hover {
-            border-color: var(--navy-blue);
-            background: rgba(10, 47, 47, 0.02);
+            border-color: var(--gold);
+            background: rgba(166, 128, 63, 0.02);
         }
 
         .checkbox-group {
@@ -292,12 +287,6 @@
             align-items: flex-start;
             gap: 0.75rem;
             margin-bottom: 2rem;
-        }
-
-        .checkbox-group input {
-            margin-top: 0.25rem;
-            width: 1.2rem;
-            height: 1.2rem;
         }
 
         .checkbox-group label {
@@ -314,7 +303,7 @@
 
         .btn-register-submit, .btn-next {
             flex: 2;
-            background: var(--navy-dark);
+            background: var(--navy-blue);
             color: #fff;
             padding: 1.2rem;
             border: none;
@@ -333,7 +322,7 @@
         .btn-prev {
             flex: 1;
             background: #fff;
-            color: var(--navy-dark);
+            color: var(--navy-blue);
             padding: 1.2rem;
             border: 1px solid #e2e8f0;
             border-radius: 14px;
@@ -346,13 +335,26 @@
         .btn-register-submit:hover, .btn-next:hover {
             transform: translateY(-3px);
             box-shadow: 0 15px 30px rgba(0,0,0,0.2);
-            background: #1e293b;
+            background: var(--navy-dark);
         }
 
         .btn-prev:hover {
             background: #f8fafc;
             border-color: #cbd5e1;
         }
+
+        .back-link {
+            text-decoration: none;
+            color: rgba(255,255,255,0.6);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+            margin-bottom: 2rem;
+        }
+
+        .back-link:hover { color: #fff; }
 
         @media (max-width: 1024px) {
             .auth-layout { grid-template-columns: 1fr; }
@@ -372,9 +374,9 @@
 
     <div class="auth-layout">
         <div class="auth-sidebar">
-            <div class="brand" style="margin-bottom: 2rem; color: #fff;">
-                <span style="font-size: 1.5rem; font-weight: 800;">QR Kartvizit</span>
-            </div>
+            <a href="../index.php" class="back-link">
+                <i data-lucide="arrow-left" style="width: 16px;"></i> Anasayfaya Dön
+            </a>
             <div class="auth-sidebar-content">
                 <h2>Yeni Nesil <br>Dijital Dünyaya <br>Hoş Geldiniz</h2>
                 <p style="opacity: 0.7; font-size: 1.1rem; margin-top: 1rem;">Binlerce profesyonelin tercihi olan Zerosoft QR sistemiyle tanışın.</p>
@@ -385,6 +387,7 @@
                     <li><i data-lucide="check-circle-2"></i> Otomatik QR Kod Üretimi</li>
                     <li><i data-lucide="check-circle-2"></i> Profesyonel Kartvizit Baskısı</li>
                 </ul>
+                <div style="margin-top: 4rem; width: 60px; height: 6px; background: var(--gold); border-radius: 10px;"></div>
             </div>
         </div>
 
@@ -407,6 +410,7 @@
                 </div>
 
                 <form id="multi-step-form" action="../processes/register_process.php" method="POST" enctype="multipart/form-data">
+                    <?php echo csrf_input(); ?>
                     
                     <!-- STEP 1: PACKAGE -->
                     <div class="form-step active" id="step-1">
@@ -513,9 +517,9 @@
                         </div>
 
                         <div class="checkbox-group">
-                            <input type="checkbox" id="kvkk" required>
+                            <input type="checkbox" id="kvkk" name="kvkk_approved" value="1" required>
                             <label for="kvkk">
-                                <a href="#" style="color: var(--navy-blue); font-weight: 600;">KVKK Aydınlatma Metni</a>'ni okudum ve onaylıyorum.
+                                <a href="#" style="color: var(--gold); font-weight: 700; text-decoration: none;">KVKK Aydınlatma Metni</a>'ni okudum ve onaylıyorum.
                             </label>
                         </div>
 
@@ -527,8 +531,8 @@
                         </div>
                     </div>
 
-                    <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: #64748b;">
-                        Zaten üye misiniz? <a href="login.php" style="color: var(--navy-blue); font-weight: 700;">Giriş Yap</a>
+                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: #64748b;">
+                        Zaten üye misiniz? <a href="login.php" style="color: var(--gold); font-weight: 800; text-decoration: none;">Giriş Yap</a>
                     </p>
                 </form>
             </div>
@@ -591,4 +595,3 @@
     </script>
 </body>
 </html>
-

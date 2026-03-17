@@ -1,7 +1,7 @@
 <?php
-require_once 'core/db.php';
-$email = 'admin@zerosoft.com';
-$password = 'admin123';
+require_once __DIR__ . '/../core/db.php';
+$email = getenv('ADMIN_EMAIL') ?: 'admin@zerosoft.local';
+$password = getenv('ADMIN_PASSWORD') ?: '';
 
 $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
 $stmt->execute([$email]);

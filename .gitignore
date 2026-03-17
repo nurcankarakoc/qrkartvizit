@@ -6,5 +6,6 @@ node_modules/
 Thumbs.db
 vendor/
 uploads/
+assets/uploads/
 *.tmp
 *.bak

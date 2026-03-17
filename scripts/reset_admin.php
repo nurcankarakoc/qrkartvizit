@@ -1,8 +1,8 @@
 <?php
-require_once 'core/db.php';
+require_once __DIR__ . '/../core/db.php';
 
-$email = "admin@zerosoft.com";
-$new_pass = "admin123";
+$email = getenv('ADMIN_EMAIL') ?: "admin@zerosoft.local";
+$new_pass = getenv('ADMIN_PASSWORD') ?: bin2hex(random_bytes(6));
 $hashed_pass = password_hash($new_pass, PASSWORD_DEFAULT);
 
 try {

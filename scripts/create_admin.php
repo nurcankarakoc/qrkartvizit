@@ -1,9 +1,10 @@
 <?php
-require_once 'core/db.php';
+require_once __DIR__ . '/../core/db.php';
 
 $name = "Zerosoft Admin";
-$email = "admin@zerosoft.com";
-$password = password_hash("admin123", PASSWORD_DEFAULT);
+$email = getenv('ADMIN_EMAIL') ?: "admin@zerosoft.local";
+$plain_password = getenv('ADMIN_PASSWORD') ?: bin2hex(random_bytes(6));
+$password = password_hash($plain_password, PASSWORD_DEFAULT);
 $role = "admin";
 
 try {
@@ -11,7 +12,7 @@ try {
     $stmt->execute([$name, $email, $password, $role]);
     echo "Admin user created successfully!\n";
     echo "Email: $email\n";
-    echo "Password: admin123\n";
+    echo "Password: $plain_password\n";
 } catch (Exception $e) {
     echo "Error creating admin: " . $e->getMessage();
 }

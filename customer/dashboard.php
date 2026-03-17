@@ -38,8 +38,13 @@ $profile = $stmt->fetch();
     <style>
         :root {
             --sidebar-width: 280px;
-            --sidebar-bg: #0f172a;
+            --sidebar-bg: #0A2F2F;
             --content-bg: #f8fafc;
+            --primary: #A6803F;
+            --gold: #A6803F;
+            --gold-light: #C5A059;
+            --navy-blue: #0A2F2F;
+            --navy-dark: #072424;
         }
 
         body {
@@ -136,8 +141,9 @@ $profile = $stmt->fetch();
         }
 
         .status-pending { background: #fef3c7; color: #92400e; }
-        .status-designing { background: #dbeafe; color: #1e40af; }
+        .status-designing { background: #eff6ff; color: var(--navy-blue); border: 1px solid #dbeafe; }
         .status-approved { background: #dcfce7; color: #166534; }
+        .status-completed { background: #f1f5f9; color: #475569; }
 
         .profile-preview-card {
             text-align: center;
@@ -155,7 +161,7 @@ $profile = $stmt->fetch();
             margin: 0 auto 1.5rem;
             font-size: 2rem;
             font-weight: 800;
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 10px 20px rgba(166, 128, 63, 0.2);
         }
 
         .btn-action {
@@ -171,8 +177,8 @@ $profile = $stmt->fetch();
             margin-top: 1rem;
         }
 
-        .btn-primary-action { background: var(--primary); color: #fff; }
-        .btn-primary-action:hover { background: #2563eb; transform: translateY(-2px); }
+        .btn-primary-action { background: var(--navy-blue); color: #fff; }
+        .btn-primary-action:hover { background: var(--navy-dark); transform: translateY(-2px); }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -222,12 +228,12 @@ $profile = $stmt->fetch();
     <main class="main-content">
         <header class="dashboard-header">
             <div>
-                <h1>Merhaba, <?php echo explode(' ', $user['name'])[0]; ?> 👋</h1>
+                <h1>Merhaba, <?php echo htmlspecialchars(explode(' ', $user['name'])[0]); ?> 👋</h1>
                 <p style="color: #64748b; margin-top: 0.5rem;">Panelinize hoş geldiniz. İşte dijital varlığınızın özeti.</p>
             </div>
             <div class="user-pill" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.5rem 1.25rem; border-radius: 50px; border: 1px solid #e2e8f0;">
-                <span style="font-weight: 600;"><?php echo $user['name']; ?></span>
-                <div style="width: 32px; height: 32px; background: #3b82f6; color:#fff; border-radius: 50%; display: flex; align-items:center; justify-content: center; font-size: 0.8rem; font-weight: 800;">
+                <span style="font-weight: 600;"><?php echo htmlspecialchars($user['name']); ?></span>
+                <div style="width: 32px; height: 32px; background: var(--gold); color:#fff; border-radius: 50%; display: flex; align-items:center; justify-content: center; font-size: 0.8rem; font-weight: 800;">
                     <?php echo strtoupper(substr($user['name'], 0, 1)); ?>
                 </div>
             </div>
@@ -255,7 +261,7 @@ $profile = $stmt->fetch();
                 <div style="display: flex; gap: 2rem; align-items: center;">
                     <div style="flex: 1;">
                         <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Paket:</p>
-                        <p style="font-weight: 700; font-size: 1.1rem;"><?php echo ucfirst($order['package'] ?? 'Akıllı Paket'); ?></p>
+                        <p style="font-weight: 700; font-size: 1.1rem;"><?php echo htmlspecialchars(ucfirst($order['package'] ?? 'smart')); ?></p>
                     </div>
                     <div style="flex: 1;">
                         <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Kalan Revize Hakkı:</p>
@@ -275,13 +281,13 @@ $profile = $stmt->fetch();
                 <div class="avatar-lg">
                     <?php echo strtoupper(substr($user['name'], 0, 1)); ?>
                 </div>
-                <h3 style="font-weight: 800;"><?php echo $user['name']; ?></h3>
+                <h3 style="font-weight: 800;"><?php echo htmlspecialchars($user['name']); ?></h3>
                 <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;"><?php echo $profile['title'] ?? 'Ünvan Belirtilmedi'; ?></p>
                 
                 <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem;">
                     <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Dijital Kartvizit Linkiniz:</p>
                     <a href="#" style="color: var(--primary); font-weight: 700; text-decoration: none; font-size: 0.9rem;">
-                        zerosoft.qr/<?php echo $profile['slug'] ?? 'kullanici'; ?>
+                        zerosoft.qr/<?php echo htmlspecialchars($profile['slug'] ?? 'kullanici'); ?>
                     </a>
                 </div>
 

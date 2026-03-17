@@ -1,15 +1,23 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: ../auth/login.php");
     exit();
 }
 
+verify_csrf_or_redirect('../customer/design-tracking.php?error=csrf');
+
 $user_id = $_SESSION['user_id'];
-$order_id = $_POST['order_id'];
-$action = $_POST['action'];
+$order_id = (int)($_POST['order_id'] ?? 0);
+$action = $_POST['action'] ?? '';
+
+if ($order_id <= 0 || !in_array($action, ['approve', 'revise', 'dispute'], true)) {
+    header("Location: ../customer/design-tracking.php?error=invalid_request");
+    exit();
+}
 
 // Siparişin bu kullanıcıya ait olup olmadığını kontrol et
 $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");

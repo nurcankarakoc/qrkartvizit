@@ -1,17 +1,27 @@
-<?php include '../core/db.php'; ?>
+<?php
+require_once '../core/db.php';
+require_once '../core/security.php';
+ensure_session_started();
+?>
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yap — QR Kartvizit Platformu</title>
+    <title>Giriş Yap — Zerosoft</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background: #f8fafc; color: #1e293b; }
+        :root {
+            --navy-blue: #0A2F2F;
+            --navy-dark: #072424;
+            --gold: #A6803F;
+        }
+
+        body { background: #f8fafc; color: #1e293b; font-family: 'Inter', sans-serif; }
 
         .auth-layout {
             display: grid;
@@ -25,13 +35,13 @@
             padding: 3rem;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* Üstten başlasın */
+            justify-content: flex-start;
             position: relative;
             overflow: hidden;
         }
 
         .auth-sidebar-content {
-            margin-top: 4rem; /* Logo altından başlasın */
+            margin-top: 4rem;
         }
 
         .auth-sidebar h2 {
@@ -55,7 +65,7 @@
         }
 
         .form-header { margin-bottom: 3rem; text-align: left; }
-        .form-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .form-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--navy-blue); }
         .form-header p { color: #64748b; font-size: 1.1rem; }
 
         .form-group { margin-bottom: 2rem; }
@@ -76,14 +86,14 @@
 
         .form-control:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--gold);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 4px rgba(166, 128, 63, 0.1);
         }
 
         .btn-auth-submit {
             width: 100%;
-            background: var(--navy-dark);
+            background: var(--navy-blue);
             color: #fff;
             padding: 1.2rem;
             border: none;
@@ -98,7 +108,7 @@
         .btn-auth-submit:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            background: #1e293b;
+            background: var(--navy-dark);
         }
 
         .auth-nav {
@@ -109,7 +119,7 @@
 
         .back-link {
             text-decoration: none;
-            color: #94a3b8;
+            color: rgba(255,255,255,0.6);
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -138,6 +148,7 @@
             <div class="auth-sidebar-content">
                 <h2>Profilinizi <br>Yönetmeye <br>Devam Edin</h2>
                 <p style="opacity: 0.7; font-size: 1.1rem; margin-top: 1.5rem;">Dijital kartvizit bilgilerinizi güncelleyebilir ve sipariş durumunuzu takip edebilirsiniz.</p>
+                <div style="margin-top: 4rem; width: 60px; height: 6px; background: var(--gold); border-radius: 10px;"></div>
             </div>
         </div>
 
@@ -159,18 +170,19 @@
                 <?php endif; ?>
 
                 <form action="../processes/login_process.php" method="POST">
+                    <?php echo csrf_input(); ?>
                     <div class="form-group">
                         <label>E-posta Adresi</label>
                         <div class="input-group">
                             <i data-lucide="mail"></i>
-                            <input type="email" name="email" class="form-control" placeholder="mehmet@email.com" required>
+                            <input type="email" name="email" class="form-control" placeholder="Örn: mehmet@email.com" required>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>Şifre</label>
-                            <a href="#" style="font-size: 0.8rem; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">Şifremi Unuttum?</a>
+                            <a href="#" style="font-size: 0.8rem; color: var(--gold); font-weight: 700; text-decoration: none; margin-bottom: 0.5rem;">Şifremi Unuttum?</a>
                         </div>
                         <div class="input-group">
                             <i data-lucide="lock"></i>
@@ -183,7 +195,7 @@
                     </button>
 
                     <p style="text-align: center; margin-top: 2.5rem; font-size: 0.95rem; color: #64748b;">
-                        Hesabınız yok mu? <a href="register.php" style="color: var(--primary); font-weight: 700;">Hemen Başvuru Yap</a>
+                        Hesabınız yok mu? <a href="register.php" style="color: var(--gold); font-weight: 800; text-decoration: none;">Hemen Başvuru Yap</a>
                     </p>
                 </form>
             </div>

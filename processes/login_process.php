@@ -2,8 +2,11 @@
 // processes/login_process.php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    verify_csrf_or_redirect('../auth/login.php?error=csrf');
+
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -17,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_role'] = $user['role'];

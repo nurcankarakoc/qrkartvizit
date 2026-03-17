@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../core/db.php';
+require_once '../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
@@ -25,18 +26,19 @@ $order = $stmt->fetch();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
             --sidebar-width: 280px;
-            --sidebar-bg: #0f172a;
+            --sidebar-bg: #0A2F2F;
             --content-bg: #f8fafc;
+            --gold: #A6803F;
+            --navy-blue: #0A2F2F;
+            --navy-dark: #072424;
         }
 
         body { background: var(--content-bg); display: flex; min-height: 100vh; }
-        .sidebar {
-            width: var(--sidebar-width); background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; position: fixed; height: 100%; z-index: 100;
-        }
         .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 3rem; }
 
         .card { background: #fff; border-radius: 20px; padding: 2.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
@@ -60,7 +62,7 @@ $order = $stmt->fetch();
 
         .empty-preview { text-align: center; color: #94a3b8; padding: 2rem; }
 
-        .action-flex { display: flex; gap: 1.5rem; justify-content: center; }
+        .action-flex { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
 
         .btn-approve { background: #10b981; color: #fff; border:none; padding: 1.2rem 3rem; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 1rem; }
         .btn-approve:hover { background: #059669; transform: scale(1.02); }
@@ -68,23 +70,27 @@ $order = $stmt->fetch();
         .btn-revise { background: #fff; color: #1e293b; border: 2px solid #e2e8f0; padding: 1.2rem 3rem; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; }
         .btn-revise:hover { border-color: #cbd5e1; background: #f8fafc; }
 
-        .revision-badge { background: #eff6ff; color: #1e40af; padding: 0.5rem 1rem; border-radius: 30px; font-weight: 700; font-size: 0.85rem; }
+        .revision-badge { background: #fff7ed; color: var(--gold); padding: 0.5rem 1rem; border-radius: 30px; font-weight: 700; font-size: 0.85rem; border: 1px solid #ffedd5; }
 
-        /* Sidebar content copied from dashboard */
-        .sidebar-header { padding: 2.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .sidebar-menu { padding: 1.5rem; flex: 1; }
         .menu-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; color: rgba(255,255,255,0.6); text-decoration: none; border-radius: 12px; margin-bottom: 0.5rem; transition: all 0.3s; font-weight: 500; }
         .menu-item:hover, .menu-item.active { background: rgba(255,255,255,0.1); color: #fff; }
         .menu-item i { width: 20px; height: 20px; }
 
-        /* Revision purchase area */
-        .buy-extra { margin-top: 4rem; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; padding: 2.5rem; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .buy-extra { margin-top: 4rem; background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); border-radius: 20px; padding: 2.5rem; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        
+        .form-control { width: 100%; padding: 0.8rem 1.2rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: #f8fafc; transition: 0.3s; margin-top: 1rem; }
+        .btn-save { background: var(--navy-blue); color: #fff; border: none; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
     </style>
 </head>
 <body>
 
     <aside class="sidebar">
-        <div class="sidebar-header"><span style="font-weight: 800; font-size: 1.2rem;">QR Kartvizit</span></div>
+        <div class="sidebar-header">
+            <div class="brand-logotype">
+                <div class="mock-logo">Z</div>
+                <span>Zerosoft <small>Panel</small></span>
+            </div>
+        </div>
         <nav class="sidebar-menu">
             <a href="dashboard.php" class="menu-item"><i data-lucide="layout-dashboard"></i><span>Genel Bakış</span></a>
             <a href="profile.php" class="menu-item"><i data-lucide="user-cog"></i><span>Profilimi Düzenle</span></a>
@@ -96,7 +102,7 @@ $order = $stmt->fetch();
     <main class="main-content">
         <header style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
             <div>
-                <h1 style="font-size: 2rem; font-weight: 800;">Tasarım Takibi</h1>
+                <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--navy-blue);">Tasarım Takibi</h1>
                 <p style="color: #64748b; margin-top: 0.5rem;">Tasarımcımız tarafından hazırlanan kartvizit taslağınızı buradan onaylayabilirsiniz.</p>
             </div>
             <div class="revision-badge">
@@ -112,7 +118,7 @@ $order = $stmt->fetch();
                 <?php else: ?>
                     <div class="empty-preview">
                         <i data-lucide="image" style="width: 64px; height: 64px; margin-bottom: 1rem; opacity: 0.3;"></i>
-                        <p style="font-weight: 600;">Tasarımınız henüz hazırlanmamıştır.</p>
+                        <p style="font-weight: 600; color: var(--navy-blue);">Tasarımınız henüz hazırlanmamıştır.</p>
                         <p style="font-size: 0.85rem; margin-top: 0.5rem;">Tasarımcımız hazırladığında burada görünecektir.</p>
                     </div>
                 <?php endif; ?>
@@ -121,6 +127,7 @@ $order = $stmt->fetch();
             <?php if($order && isset($order['status']) && ($order['status'] == 'designing' || $order['status'] == 'awaiting_approval' || $order['status'] == 'revision_requested') && isset($order['draft_path']) && $order['draft_path']): ?>
                 <div class="action-flex">
                     <form action="../processes/order_status_update.php" method="POST">
+                        <?php echo csrf_input(); ?>
                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                         <input type="hidden" name="action" value="approve">
                         <button type="submit" class="btn-approve">
@@ -128,17 +135,18 @@ $order = $stmt->fetch();
                         </button>
                     </form>
 
-                    <button class="btn-revise" onclick="document.getElementById('revision-form').style.display='block'">
+                    <button class="btn-revise" onclick="document.getElementById('revision-form').style.display='block'; document.getElementById('dispute-form').style.display='none';">
                         Revize İste
                     </button>
 
-                    <button class="btn-revise" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="document.getElementById('dispute-form').style.display='block'">
+                    <button class="btn-revise" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="document.getElementById('dispute-form').style.display='block'; document.getElementById('revision-form').style.display='none';">
                         <i data-lucide="alert-triangle" style="width: 14px; vertical-align: middle; margin-right: 0.2rem;"></i> Hata Bildir
                     </button>
                 </div>
                 
                 <div id="dispute-form" style="display:none; margin-top: 2rem; text-align: left; padding: 2rem; background: #fef2f2; border-radius: 12px; border: 1px solid #fee2e2;">
                     <form action="../processes/order_status_update.php" method="POST">
+                        <?php echo csrf_input(); ?>
                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                         <input type="hidden" name="action" value="dispute">
                         <label style="font-weight: 700; margin-bottom: 1rem; display: block; color: #b91c1c;">Hata Bildirimi (İtiraz)</label>
@@ -148,19 +156,20 @@ $order = $stmt->fetch();
                     </form>
                 </div>
                 
-                <div id="revision-form" style="display:none; margin-top: 2rem; text-align: left; padding: 2rem; background: #f8fafc; border-radius: 12px;">
+                <div id="revision-form" style="display:none; margin-top: 2rem; text-align: left; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <form action="../processes/order_status_update.php" method="POST">
+                        <?php echo csrf_input(); ?>
                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                         <input type="hidden" name="action" value="revise">
-                        <label style="font-weight: 700; margin-bottom: 1rem; display: block;">Revize Notlarınız</label>
+                        <label style="font-weight: 700; margin-bottom: 1rem; display: block; color: var(--navy-blue);">Revize Notlarınız</label>
                         <textarea name="revision_notes" class="form-control" rows="3" placeholder="Logoyu biraz daha sağa kaydırabilir miyiz? Renkler daha canlı olsun..." required></textarea>
                         <button type="submit" class="btn-save" style="margin-top: 1rem;">Notları Gönder</button>
                     </form>
                 </div>
             <?php elseif($order && isset($order['status']) && $order['status'] == 'approved'): ?>
-                <div style="background: #dcfce7; color: #166534; padding: 2rem; border-radius: 16px;">
+                <div style="background: #dcfce7; color: #166534; padding: 2.5rem; border-radius: 16px; border: 1px solid #bbfcce;">
                     <i data-lucide="check-circle" style="width: 48px; height: 48px; margin-bottom: 1rem;"></i>
-                    <h4 style="font-weight: 800;">Tasarım Onaylandı!</h4>
+                    <h4 style="font-weight: 800; font-size: 1.25rem;">Tasarım Onaylandı!</h4>
                     <p>Kartvizitleriniz baskı sırasına alınmıştır. Süreç tamamlandığında bilgilendirileceksiniz.</p>
                 </div>
             <?php endif; ?>
@@ -172,7 +181,7 @@ $order = $stmt->fetch();
                     <h3 style="font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem;">Ücretsiz Revize Hakkınız Bitti</h3>
                     <p style="opacity: 0.7;">Endişelenmeyin! Uygun fiyata ek revize paketi satın alarak sürece devam edebilirsiniz.</p>
                 </div>
-                <a href="#" class="btn-approve" style="background: var(--yellow); color: #000;">
+                <a href="#" class="btn-approve" style="background: var(--gold); color: #fff;">
                     <i data-lucide="zap"></i> Ek Revize Al (99 ₺)
                 </a>
             </div>

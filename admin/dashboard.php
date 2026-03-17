@@ -8,15 +8,34 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     exit();
 }
 
+function table_has_column(PDO $pdo, string $table, string $column): bool
+{
+    $table_escaped = str_replace('`', '``', $table);
+    $column_escaped = str_replace("'", "''", $column);
+    $stmt = $pdo->query("SHOW COLUMNS FROM `{$table_escaped}` LIKE '{$column_escaped}'");
+    return (bool)$stmt->fetch();
+}
+
+$has_order_package = table_has_column($pdo, 'orders', 'package');
+$has_payment_type = table_has_column($pdo, 'payments', 'type');
+$payment_type_col = $has_payment_type ? 'type' : 'payment_type';
+
 // 1. Finance Stats
-$stmt_sales = $pdo->query("SELECT package, COUNT(*) as count, SUM(amount) as total 
-                           FROM (SELECT o.package, IFNULL(p.amount, 0) as amount 
-                                 FROM orders o 
-                                 LEFT JOIN payments p ON o.id = p.order_id) s 
-                           GROUP BY package");
+$sales_sql = $has_order_package
+    ? "SELECT COALESCE(o.package, 'classic') AS package, COUNT(*) as count, SUM(IFNULL(p.amount, 0)) as total
+       FROM orders o
+       LEFT JOIN payments p ON o.id = p.order_id
+       GROUP BY COALESCE(o.package, 'classic')"
+    : "SELECT COALESCE(pk.slug, 'classic') AS package, COUNT(*) as count, SUM(IFNULL(p.amount, 0)) as total
+       FROM orders o
+       LEFT JOIN packages pk ON pk.id = o.package_id
+       LEFT JOIN payments p ON o.id = p.order_id
+       GROUP BY COALESCE(pk.slug, 'classic')";
+
+$stmt_sales = $pdo->query($sales_sql);
 $package_stats = $stmt_sales->fetchAll();
 
-$stmt_extra_rev = $pdo->query("SELECT SUM(amount) FROM payments WHERE type = 'extra_revision'");
+$stmt_extra_rev = $pdo->query("SELECT SUM(amount) FROM payments WHERE {$payment_type_col} = 'extra_revision'");
 $extra_rev_total = $stmt_extra_rev->fetchColumn() ?: 0;
 
 $stmt_total_revenue = $pdo->query("SELECT SUM(amount) FROM payments");
@@ -25,6 +44,7 @@ $total_revenue = $stmt_total_revenue->fetchColumn() ?: 0;
 // 2. Order Status Summary
 $stmt_status = $pdo->query("SELECT status, COUNT(*) as count FROM orders GROUP BY status");
 $status_counts = $stmt_status->fetchAll(PDO::FETCH_KEY_PAIR);
+$pending_count = ($status_counts['pending'] ?? 0) + ($status_counts['pending_design'] ?? 0) + ($status_counts['pending_payment'] ?? 0);
 
 // 3. Pending Disputes
 $stmt_disputes = $pdo->query("SELECT d.*, u.name as customer_name, o.id as order_id 
@@ -81,7 +101,7 @@ $recent_orders = $stmt_recent->fetchAll();
                         <span class="role">Zerosoft Yönetici</span>
                     </div>
                 </div>
-                <a href="../processes/logout.php" class="logout-btn"><i data-lucide="log-out"></i></a>
+                <a href="../processes/logout.php" class="logout-btn" style="color: rgba(255,255,255,0.4);"><i data-lucide="log-out"></i></a>
             </div>
         </aside>
 
@@ -89,16 +109,16 @@ $recent_orders = $stmt_recent->fetchAll();
             <header class="top-bar">
                 <h1>Sistem Genel Özeti</h1>
                 <div class="header-actions">
-                    <div class="date-badge"><?php echo date('d.m.Y'); ?></div>
+                    <div class="date-badge" style="background: var(--white); padding: 0.5rem 1rem; border-radius: 10px; font-weight: 600; color: var(--navy-blue); border: 1px solid #e2e8f0;"><?php echo date('d.m.Y'); ?></div>
                 </div>
             </header>
 
             <div class="content-wrapper">
                 <!-- Finance Overview -->
                 <div class="stats-grid-dashboard">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8); color: #fff;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); color: #fff;">
                         <div class="stat-info">
-                            <span class="label" style="color: rgba(255,255,255,0.7);">Toplam Cila</span>
+                            <span class="label" style="color: rgba(255,255,255,0.8);">Toplam Ciro</span>
                             <span class="value" style="color: #fff;"><?php echo number_format($total_revenue, 2, ',', '.'); ?> ₺</span>
                         </div>
                         <i data-lucide="wallet" style="opacity: 0.3; width: 48px; height: 48px;"></i>
@@ -108,14 +128,14 @@ $recent_orders = $stmt_recent->fetchAll();
                             <span class="label">Ek Revize Geliri</span>
                             <span class="value"><?php echo number_format($extra_rev_total, 2, ',', '.'); ?> ₺</span>
                         </div>
-                        <i data-lucide="refresh-cw" style="color: #f59e0b; opacity: 0.3;"></i>
+                        <i data-lucide="refresh-cw" style="color: var(--gold); opacity: 0.5;"></i>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="label">Bekleyen Sipariş</span>
-                            <span class="value"><?php echo $status_counts['pending'] ?? 0; ?></span>
+                            <span class="value"><?php echo $pending_count; ?></span>
                         </div>
-                        <i data-lucide="clock" style="color: #3b82f6; opacity: 0.3;"></i>
+                        <i data-lucide="clock" style="color: var(--navy-blue); opacity: 0.3;"></i>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
@@ -157,6 +177,8 @@ $recent_orders = $stmt_recent->fetchAll();
                             <?php 
                             $status_map = [
                                 'pending' => 'Havuzda Bekleyen',
+                                'pending_design' => 'Tasarım Havuzunda',
+                                'pending_payment' => 'Ödeme Bekliyor',
                                 'designing' => 'Tasarlanıyor',
                                 'awaiting_approval' => 'Onay Bekliyor',
                                 'revision_requested' => 'Revize Sürecinde',
