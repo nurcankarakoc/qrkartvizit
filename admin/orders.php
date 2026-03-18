@@ -127,6 +127,7 @@ $status_map = [
         </main>
     </div>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

@@ -134,6 +134,21 @@ ensure_session_started();
             .auth-sidebar { display: none; }
             .auth-main { padding: 3rem 1.5rem; }
         }
+
+        @media (max-width: 768px) {
+            .auth-main {
+                align-items: flex-start;
+                padding: 1.5rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+            }
+            .form-header h1 { font-size: 2rem; }
+            .btn-auth-submit { min-height: 44px; }
+        }
+
+        @media (max-width: 480px) {
+            .form-container { max-width: 100%; }
+            .form-header h1 { font-size: 1.75rem; }
+            .form-group { margin-bottom: 1.25rem; }
+        }
     </style>
 </head>
 <body>
@@ -202,6 +217,7 @@ ensure_session_started();
         </main>
     </div>
 
+    <script src="../assets/js/mobile-form.js"></script>
     <script>
         lucide.createIcons();
     </script>

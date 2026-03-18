@@ -221,6 +221,7 @@ $completed_orders = $stmt_completed->fetchAll();
         .badge.package-smart { background: #fff7ed; color: #9a3412; }
     </style>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
     <script>
         lucide.createIcons();
     </script>

@@ -4,19 +4,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelector('.nav-links');
 
     if(menuBtn && navLinks) {
-        menuBtn.addEventListener('click', () => {
+        const closeMenu = () => {
+            navLinks.style.display = 'none';
+            menuBtn.setAttribute('aria-expanded', 'false');
+        };
+
+        const openMenu = () => {
+            navLinks.style.display = 'flex';
+            navLinks.style.flexDirection = 'column';
+            navLinks.style.position = 'absolute';
+            navLinks.style.top = '100%';
+            navLinks.style.left = '0';
+            navLinks.style.width = '100%';
+            navLinks.style.background = 'rgba(6, 9, 19, 0.95)';
+            navLinks.style.padding = '1rem';
+            navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+            menuBtn.setAttribute('aria-expanded', 'true');
+        };
+
+        const toggleMenu = () => {
             if (navLinks.style.display === 'flex') {
-                navLinks.style.display = 'none';
-            } else {
-                navLinks.style.display = 'flex';
-                navLinks.style.flexDirection = 'column';
-                navLinks.style.position = 'absolute';
-                navLinks.style.top = '100%';
-                navLinks.style.left = '0';
-                navLinks.style.width = '100%';
-                navLinks.style.background = 'rgba(6, 9, 19, 0.95)';
-                navLinks.style.padding = '1rem';
-                navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+                closeMenu();
+                return;
+            }
+            openMenu();
+        };
+
+        menuBtn.addEventListener('click', toggleMenu);
+        menuBtn.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            toggleMenu();
+        }, { passive: false });
+
+        document.addEventListener('click', (event) => {
+            if (window.innerWidth > 768) {
+                return;
+            }
+            if (!menuBtn.contains(event.target) && !navLinks.contains(event.target)) {
+                closeMenu();
             }
         });
     }

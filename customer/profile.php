@@ -10,16 +10,49 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
+function has_digital_profile_package(?string $package): bool
+{
+    if (!is_string($package) || $package === '') {
+        return false;
+    }
+
+    $normalized = strtolower(trim($package));
+    return str_contains($normalized, 'panel')
+        || str_contains($normalized, 'smart')
+        || str_contains($normalized, 'akilli');
+}
+
+function project_base_url_for_customer_panel(): string
+{
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    $scheme = $is_https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+    $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/customer/profile.php');
+    $project_path = preg_replace('#/customer/[^/]+$#', '', $script_name);
+
+    return $scheme . '://' . $host . rtrim((string)$project_path, '/');
+}
+
+$stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+
 // Mevcut profil bilgilerini çek
-$stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ?");
+$stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ? ORDER BY id DESC LIMIT 1");
 $stmt->execute([$user_id]);
 $profile = $stmt->fetch();
 
 if (!$profile) {
     // Profil yoksa taslak oluştur (slug email'den türetilebilir)
-    $slug = strtolower(str_replace(' ', '-', explode('@', $_SESSION['user_name'] ?? 'user')[0])) . '-' . rand(100, 999);
+    $seed_name = (string)($user['name'] ?? ($_SESSION['user_name'] ?? 'user'));
+    $slug_base = strtolower(trim((string)preg_replace('/[^A-Za-z0-9-]+/', '-', $seed_name), '-'));
+    if ($slug_base === '') {
+        $slug_base = 'user';
+    }
+    $slug = $slug_base . '-' . rand(100, 999);
     $stmt = $pdo->prepare("INSERT INTO profiles (user_id, slug, full_name) VALUES (?, ?, ?)");
-    $stmt->execute([$user_id, $slug, $_SESSION['user_name'] ?? 'User']);
+    $stmt->execute([$user_id, $slug, $seed_name !== '' ? $seed_name : 'User']);
     
     $stmt = $pdo->prepare("SELECT * FROM profiles WHERE id = ?");
     $stmt->execute([$pdo->lastInsertId()]);
@@ -27,6 +60,19 @@ if (!$profile) {
 }
 
 // Sosyal medya linklerini çek
+$stmt = $pdo->prepare("SELECT package FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1");
+$stmt->execute([$user_id]);
+$order = $stmt->fetch();
+$is_digital_profile_active_for_package = has_digital_profile_package((string)($order['package'] ?? ''));
+$profile_slug = trim((string)($profile['slug'] ?? ''));
+$public_profile_url = '';
+
+if ($is_digital_profile_active_for_package && $profile_slug !== '') {
+    $public_profile_url = project_base_url_for_customer_panel()
+        . '/kartvizit.php?slug='
+        . rawurlencode($profile_slug);
+}
+
 $stmt = $pdo->prepare("SELECT * FROM social_links WHERE profile_id = ?");
 $stmt->execute([$profile['id']]);
 $links = $stmt->fetchAll();
@@ -70,6 +116,7 @@ $links = $stmt->fetchAll();
         .image-upload i { color: #94a3b8; }
 
         .social-link-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 1rem; margin-bottom: 1rem; }
+        .two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
         .btn-save { background: var(--navy-blue); color: #fff; border: none; padding: 1rem 2.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
         .btn-save:hover { background: var(--navy-dark); transform: translateY(-2px); }
@@ -77,6 +124,18 @@ $links = $stmt->fetchAll();
         .menu-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; color: rgba(255,255,255,0.6); text-decoration: none; border-radius: 12px; margin-bottom: 0.5rem; transition: all 0.3s; font-weight: 500; }
         .menu-item:hover, .menu-item.active { background: rgba(255,255,255,0.1); color: #fff; }
         .menu-item i { width: 20px; height: 20px; }
+
+        @media (max-width: 1024px) {
+            body { display: block; }
+            .main-content { margin-left: 0; padding: 1rem; }
+        }
+
+        @media (max-width: 768px) {
+            .card { padding: 1rem; border-radius: 16px; }
+            .two-col-grid,
+            .social-link-row { grid-template-columns: 1fr; gap: 0.75rem; }
+            .btn-save { width: 100%; min-height: 44px; }
+        }
     </style>
 </head>
 <body>
@@ -103,6 +162,7 @@ $links = $stmt->fetchAll();
         </header>
 
         <form action="../processes/profile_update.php" method="POST" enctype="multipart/form-data">
+            <?php echo csrf_input(); ?>
             <div class="card">
                 <div class="form-group">
                     <label>Profil Fotoğrafı</label>
@@ -117,7 +177,20 @@ $links = $stmt->fetchAll();
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 2rem;">
+                    <p style="margin: 0 0 0.35rem; font-size: 0.8rem; color: #64748b; font-weight: 700;">Dijital kartvizit yayın linki</p>
+                    <?php if ($public_profile_url !== ''): ?>
+                        <a href="<?php echo htmlspecialchars($public_profile_url); ?>" target="_blank" rel="noopener" style="font-size: 0.9rem; font-weight: 700; color: var(--gold); text-decoration: none; word-break: break-all;">
+                            <?php echo htmlspecialchars($public_profile_url); ?>
+                        </a>
+                    <?php elseif (!$is_digital_profile_active_for_package): ?>
+                        <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Bu pakette dijital profil aktif degil. Panel veya Akilli paket ile yayin acilir.</p>
+                    <?php else: ?>
+                        <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Profil slug hazirlandiginda burada yayin linki gorunecek.</p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="two-col-grid">
                     <div class="form-group">
                         <label>Ad Soyad</label>
                         <input type="text" name="full_name" class="form-control" value="<?php echo htmlspecialchars($profile['full_name']); ?>" placeholder="Mehmet Yılmaz">
@@ -128,7 +201,7 @@ $links = $stmt->fetchAll();
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div class="two-col-grid">
                     <div class="form-group">
                         <label>Şirket Adı</label>
                         <input type="text" name="company" class="form-control" value="<?php echo htmlspecialchars($profile['company']); ?>" placeholder="Zerosoft Teknoloji">
@@ -137,6 +210,11 @@ $links = $stmt->fetchAll();
                         <label>İş Telefonu</label>
                         <input type="tel" name="phone_work" class="form-control" value="<?php echo htmlspecialchars($profile['phone_work']); ?>" placeholder="0532 ...">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>İş E-posta</label>
+                    <input type="email" name="email_work" class="form-control" value="<?php echo htmlspecialchars($profile['email_work'] ?? ($user['email'] ?? '')); ?>" placeholder="ad@firma.com">
                 </div>
 
                 <div class="form-group">
@@ -185,6 +263,8 @@ $links = $stmt->fetchAll();
         </form>
     </main>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
+    <script src="../assets/js/mobile-form.js"></script>
     <script>
         lucide.createIcons();
 

@@ -231,6 +231,7 @@ $recent_orders = $stmt_recent->fetchAll();
         </main>
     </div>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

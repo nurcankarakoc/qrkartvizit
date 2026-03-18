@@ -75,7 +75,7 @@ ensure_session_started();
         }
 
         .auth-main {
-            padding: 4rem;
+            padding: 6rem 2.25rem 0.2rem;
             display: flex;
             align-items: flex-start;
             justify-content: center;
@@ -85,15 +85,15 @@ ensure_session_started();
 
         .form-container {
             width: 100%;
-            max-width: 650px;
-            padding-top: 2rem;
+            max-width: 760px;
+            padding-top: 0;
         }
 
         /* STEPPER STYLES */
         .stepper {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4rem;
+            margin-bottom: 2rem;
             position: relative;
         }
 
@@ -156,19 +156,19 @@ ensure_session_started();
         .step-item.active .step-label { color: var(--navy-blue); }
 
         .form-header {
-            margin-bottom: 3rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-header h1 {
-            font-size: 2.5rem;
+            font-size: 2.15rem;
             font-weight: 800;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             color: var(--navy-blue);
         }
 
         .form-header p {
             color: #64748b;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .form-step {
@@ -188,18 +188,22 @@ ensure_session_started();
         .package-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2.5rem;
+            gap: 0.85rem;
+            margin-bottom: 1rem;
         }
 
         .package-card {
             border: 2px solid #f1f5f9;
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1.05rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            text-align: center;
+            text-align: left;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
         }
 
         .package-card input {
@@ -221,13 +225,67 @@ ensure_session_started();
         .package-card h4 {
             font-size: 1rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.2rem;
         }
 
         .package-card .price {
             font-size: 1.1rem;
             font-weight: 800;
             color: var(--navy-blue);
+        }
+
+        .package-subtitle {
+            font-size: 0.74rem;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .package-meta-list {
+            list-style: none;
+            margin: 0.2rem 0 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .package-meta-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.72rem;
+            color: #475569;
+            line-height: 1.25;
+        }
+
+        .package-meta-list li::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            min-width: 7px;
+            border-radius: 50%;
+            background: var(--gold);
+            margin-top: 0.32rem;
+        }
+
+        .package-badge {
+            align-self: flex-start;
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: #fff;
+            background: var(--navy-blue);
+            border-radius: 999px;
+            padding: 0.22rem 0.55rem;
+            letter-spacing: 0.4px;
+        }
+
+        .package-note {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 0;
+            margin-bottom: 0.9rem;
+            line-height: 1.4;
         }
 
         .form-grid {
@@ -298,17 +356,17 @@ ensure_session_started();
         .step-actions {
             display: flex;
             gap: 1rem;
-            margin-top: 2rem;
+            margin-top: 1rem;
         }
 
         .btn-register-submit, .btn-next {
             flex: 2;
             background: var(--navy-blue);
             color: #fff;
-            padding: 1.2rem;
+            padding: 0.95rem 1rem;
             border: none;
             border-radius: 14px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
@@ -323,13 +381,20 @@ ensure_session_started();
             flex: 1;
             background: #fff;
             color: var(--navy-blue);
-            padding: 1.2rem;
+            padding: 0.95rem 1rem;
             border: 1px solid #e2e8f0;
             border-radius: 14px;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
+        }
+
+        .login-link-row {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.93rem;
+            color: #64748b;
         }
 
         .btn-register-submit:hover, .btn-next:hover {
@@ -362,11 +427,41 @@ ensure_session_started();
             .auth-main { padding: 3rem 1.5rem; }
         }
 
+        @media (max-height: 900px) and (min-width: 1025px) {
+            .auth-main { padding-top: 5.2rem; padding-bottom: 0.2rem; }
+            .form-container { padding-top: 0.2rem; }
+            .stepper { margin-bottom: 1.25rem; }
+            .form-header h1 { font-size: 1.95rem; }
+            .package-grid { margin-bottom: 0.75rem; }
+            .package-card { min-height: 190px; }
+            .package-meta-list li { font-size: 0.7rem; }
+            .login-link-row { margin-top: 0.75rem; }
+        }
+
         @media (max-width: 600px) {
             .package-grid { grid-template-columns: 1fr; }
+            .package-card { min-height: auto; }
             .form-grid { grid-template-columns: 1fr; }
             .stepper { margin-bottom: 2rem; }
             .step-label { display: none; }
+        }
+
+        @media (max-width: 768px) {
+            .auth-main {
+                padding: 1.25rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+            }
+            .form-container { padding-top: 0; }
+            .form-header h1 { font-size: 2rem; }
+            .step-actions { flex-direction: column; }
+            .btn-register-submit, .btn-next, .btn-prev { width: 100%; min-height: 44px; }
+            .stepper { overflow-x: auto; gap: 0.75rem; padding-bottom: 0.5rem; }
+            .step-item { min-width: 90px; }
+        }
+
+        @media (max-width: 480px) {
+            .form-header h1 { font-size: 1.75rem; }
+            .package-card { padding: 1rem; }
+            .file-upload-box { padding: 1.25rem; }
         }
     </style>
 </head>
@@ -423,22 +518,42 @@ ensure_session_started();
                             <label class="package-card" onclick="selectPackage(this)">
                                 <input type="radio" name="package" value="classic">
                                 <h4>Klasik</h4>
-                                <span class="price">799 ₺</span>
-                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Sadece Baskı</p>
+                                <span class="price">799 &#8378;</span>
+                                <p class="package-subtitle">Sadece Baskı (dijital panel yok)</p>
+                                <ul class="package-meta-list">
+                                    <li>Standart fiziksel kartvizit baskısı</li>
+                                    <li>2 revize hakkı</li>
+                                    <li>Kurumsal logo ve temel tasarım desteği</li>
+                                </ul>
                             </label>
                             <label class="package-card active" onclick="selectPackage(this)">
                                 <input type="radio" name="package" value="smart" checked>
+                                <span class="package-badge">EN ÇOK TERCİH EDİLEN</span>
                                 <h4>Akıllı</h4>
-                                <span class="price">1.299 ₺</span>
-                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Panel + Baskı</p>
+                                <span class="price">1.299 &#8378;</span>
+                                <p class="package-subtitle">Panel + Baskı + Dinamik QR</p>
+                                <ul class="package-meta-list">
+                                    <li>Dijital profil sitesi + fiziksel baskı birlikte</li>
+                                    <li>Dinamik QR ile bilgi güncelleme</li>
+                                    <li>2 revize hakkı ve panelden kolay yönetim</li>
+                                </ul>
                             </label>
                             <label class="package-card" onclick="selectPackage(this)">
                                 <input type="radio" name="package" value="panel">
                                 <h4>Sadece Panel</h4>
-                                <span class="price">499 ₺/yıl</span>
-                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Sadece Dijital</p>
+                                <span class="price">499 &#8378;/yıl</span>
+                                <p class="package-subtitle">Sadece Dijital Kartvizit Deneyimi</p>
+                                <ul class="package-meta-list">
+                                    <li>Fiziksel baskı olmadan tamamen dijital profil</li>
+                                    <li>QR ile profil paylaşımı ve panel yönetimi</li>
+                                    <li>Yıllık yenileme modeli</li>
+                                </ul>
                             </label>
                         </div>
+
+                        <p class="package-note">
+                            Dijital profil isteyenler için en kapsamlı seçenek Akıllı pakettir.
+                        </p>
 
                         <div class="step-actions">
                             <button type="button" class="btn-next" onclick="nextStep(2)">
@@ -531,7 +646,7 @@ ensure_session_started();
                         </div>
                     </div>
 
-                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: #64748b;">
+                    <p class="login-link-row">
                         Zaten üye misiniz? <a href="login.php" style="color: var(--gold); font-weight: 800; text-decoration: none;">Giriş Yap</a>
                     </p>
                 </form>
@@ -539,6 +654,7 @@ ensure_session_started();
         </main>
     </div>
 
+    <script src="../assets/js/mobile-form.js"></script>
     <script>
         lucide.createIcons();
 
@@ -595,3 +711,4 @@ ensure_session_started();
     </script>
 </body>
 </html>
+

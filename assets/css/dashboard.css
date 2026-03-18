@@ -21,6 +21,7 @@
 
 .dashboard-body {
     background-color: var(--content-bg);
+    min-height: 100dvh;
 }
 
 .dashboard-layout {
@@ -480,4 +481,250 @@
 @media (max-width: 1024px) {
     .sidebar { display: none; }
     .main-content { margin-left: 0; padding: 1.5rem; }
+}
+
+/* MOBILE-FIRST DASHBOARD LAYER */
+.mobile-topbar,
+.sidebar-overlay {
+    display: none;
+}
+
+/* Visual overflow safety for uploaded logos, QR and drafts */
+.logo-preview img,
+.qr-area img,
+.design-preview img,
+.draft-thumb img,
+.card-details img {
+    max-width: 100%;
+    height: auto;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-layout {
+        display: block;
+    }
+
+    .mobile-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 1200;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
+    }
+
+    .mobile-topbar__brand {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--navy-blue);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        text-align: center;
+    }
+
+    .mobile-nav-toggle {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: var(--navy-blue);
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .mobile-nav-toggle i {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sidebar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-110%);
+        transition: transform 0.28s ease;
+        width: min(86vw, 320px);
+        height: 100dvh;
+        z-index: 1300;
+    }
+
+    .sidebar.is-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        border: 0;
+        margin: 0;
+        padding: 0;
+        background: rgba(15, 23, 42, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 1250;
+    }
+
+    .sidebar-overlay.is-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 1rem;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    .main-content {
+        padding: 1.25rem 1.5rem;
+    }
+
+    .card,
+    .card-details,
+    .info-box {
+        border-radius: 18px;
+    }
+}
+
+@media (max-width: 768px) {
+    .top-bar {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .order-grid,
+    .status-grid,
+    .dashboard-tables {
+        grid-template-columns: 1fr !important;
+    }
+
+    .header-search {
+        width: 100%;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 680px;
+    }
+
+    /* 44x44 touch targets */
+    .btn-action,
+    .btn-submit-draft,
+    .btn-save,
+    .btn-approve,
+    .btn-revise,
+    .menu-item,
+    .sidebar-nav ul li a,
+    .sidebar-menu .menu-item,
+    .logout-btn,
+    button,
+    input[type="submit"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .qr-area img {
+        width: min(180px, 100%);
+        height: auto;
+    }
+
+    .upload-zone {
+        padding: 1.25rem;
+    }
+
+    .form-control,
+    input,
+    select,
+    textarea {
+        font-size: 16px !important; /* Prevent iOS zoom and keyboard overlap issues */
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 0.75rem;
+    }
+
+    .card,
+    .card-details,
+    .info-box,
+    .table-container {
+        padding: 1rem !important;
+        border-radius: 16px !important;
+    }
+
+    .mobile-topbar {
+        padding: 0.65rem 0.75rem;
+    }
+
+    .mobile-topbar__brand {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 430px) {
+    .mobile-topbar__brand {
+        font-size: 0.86rem;
+    }
+
+    .top-bar {
+        margin-bottom: 0.85rem;
+    }
+}
+
+@media (max-width: 390px) {
+    .main-content {
+        padding: 0.6rem;
+    }
+
+    .mobile-nav-toggle {
+        border-radius: 10px;
+    }
+
+    .sidebar {
+        width: min(92vw, 320px);
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .mobile-topbar {
+        position: static;
+    }
+}
+
+/* Hover fallback for touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .btn-action:hover,
+    .btn-primary-action:hover,
+    .upload-zone:hover,
+    .sidebar-nav ul li a:hover {
+        transform: none !important;
+        box-shadow: none !important;
+    }
 }

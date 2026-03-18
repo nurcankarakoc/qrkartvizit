@@ -37,15 +37,32 @@ function table_has_column(PDO $pdo, string $table, string $column): bool
     return (bool)$stmt->fetch();
 }
 
-// Smart Package check
+function has_digital_profile_package(?string $package): bool
+{
+    if (!is_string($package) || $package === '') {
+        return false;
+    }
+
+    $normalized = strtolower(trim($package));
+    return str_contains($normalized, 'panel')
+        || str_contains($normalized, 'smart')
+        || str_contains($normalized, 'akilli');
+}
+
+// Digital package check
 $package_value = (string)($order['package'] ?? '');
-$is_smart = (stripos($package_value, 'Akilli') !== false || stripos($package_value, 'smart') !== false);
+$has_digital_profile = has_digital_profile_package($package_value);
 
 // Fetch profile if exists (for QR code)
 $profile_order_col = table_has_column($pdo, 'profiles', 'created_at') ? 'created_at' : 'id';
 $stmt_profile = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ? ORDER BY {$profile_order_col} DESC LIMIT 1");
 $stmt_profile->execute([$order['user_id']]);
 $profile = $stmt_profile->fetch();
+$public_profile_url = '';
+
+if ($profile && !empty($profile['slug'])) {
+    $public_profile_url = '../kartvizit.php?slug=' . rawurlencode((string)$profile['slug']);
+}
 
 // Fetch existing drafts
 try {
@@ -61,6 +78,27 @@ if ($order['status'] == 'pending') {
     $pdo->prepare("UPDATE orders SET status = 'designing' WHERE id = ?")->execute([$order_id]);
     $order['status'] = 'designing';
 }
+
+$upload_success = (($_GET['success'] ?? '') === 'uploaded');
+$upload_error_key = (string)($_GET['error'] ?? '');
+$upload_error_messages = [
+    'csrf' => 'Guvenlik dogrulamasi basarisiz oldu. Lutfen sayfayi yenileyip tekrar deneyin.',
+    'file_type' => 'Sadece JPG, PNG, WEBP veya PDF dosyasi yukleyebilirsiniz.',
+    'file_mime' => 'Dosya turu dogrulanamadi. Farkli bir formatta tekrar kaydedip deneyin.',
+    'file_size' => 'Dosya boyutu 10MB sinirini asiyor.',
+    'upload_ini_size' => 'Sunucu dosya limiti asildi. Dosyayi kucultup tekrar deneyin.',
+    'upload_form_size' => 'Dosya form limitini asti.',
+    'upload_partial' => 'Dosya eksik yuklendi. Internet baglantinizi kontrol edin.',
+    'upload_no_file' => 'Lutfen once bir dosya secin.',
+    'upload_tmp_dir' => 'Sunucuda gecici klasor bulunamadi.',
+    'upload_cant_write' => 'Dosya diske yazilamadi.',
+    'upload_extension' => 'Yukleme bir PHP eklentisi tarafindan durduruldu.',
+    'upload_unknown' => 'Dosya yuklenirken bilinmeyen bir hata olustu.',
+    'upload_dir' => 'Yukleme klasoru olusturulamadi.',
+    'move' => 'Secilen dosya hedef klasore tasinamadi.',
+    'db' => 'Dosya yuklendi ancak veritabani kaydi yapilamadi.',
+];
+$upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
 
 ?>
 <!DOCTYPE html>
@@ -87,7 +125,7 @@ if ($order['status'] == 'pending') {
         .detail-row span:last-child { color: #1e293b; font-weight: 700; }
         .design-notes { background: #f8fafc; padding: 1.5rem; border-radius: 16px; border-left: 4px solid var(--gold); margin-top: 2rem; line-height: 1.6; color: #475569; }
         .logo-preview { margin-top: 2rem; }
-        .logo-preview img { max-width: 200px; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc; }
+        .logo-preview img { max-width: min(200px, 100%); height: auto; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc; }
         .upload-zone { margin-top: 3rem; border: 2px dashed #cbd5e1; padding: 3rem; border-radius: 24px; text-align: center; transition: all 0.3s; cursor: pointer; position: relative; }
         .upload-zone:hover { border-color: var(--gold); background: #fffbeb; }
         .upload-zone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
@@ -96,7 +134,7 @@ if ($order['status'] == 'pending') {
         .btn-submit-draft { width: 100%; padding: 1.2rem; background: var(--navy-blue); color: #fff; border: none; border-radius: 14px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 1.5rem; transition: all 0.3s; }
         .btn-submit-draft:hover { background: var(--navy-dark); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .qr-area { text-align: center; padding: 1.5rem; background: #f8fafc; border-radius: 16px; margin-top: 1rem; }
-        .qr-area img { width: 150px; height: 150px; display: block; margin: 0 auto 1rem; }
+        .qr-area img { width: min(150px, 100%); height: auto; display: block; margin: 0 auto 1rem; }
         .qr-area a { font-size: 0.85rem; font-weight: 700; color: var(--gold); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .draft-history { margin-top: 3rem; }
         .draft-card { display: flex; align-items: center; gap: 1.5rem; padding: 1.2rem; background: #f8fafc; border-radius: 16px; margin-bottom: 1rem; }
@@ -106,6 +144,18 @@ if ($order['status'] == 'pending') {
         .draft-status.approved { color: #16a34a; font-weight: 700; }
         .draft-status.pending { color: var(--navy-blue); font-weight: 700; }
         .status-chip { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #eff6ff; color: var(--navy-blue); }
+        .upload-alert { margin-top: 1rem; margin-bottom: 1.5rem; padding: 0.9rem 1rem; border-radius: 12px; font-weight: 600; }
+        .upload-alert.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .upload-alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        @media (max-width: 768px) {
+            .card-details,
+            .info-box { padding: 1rem; border-radius: 16px; }
+            .upload-zone { padding: 1.25rem; }
+            .btn-submit-draft, .btn-action { min-height: 44px; width: 100%; justify-content: center; }
+            .detail-row { gap: 0.75rem; align-items: flex-start; }
+            .detail-row span:last-child { text-align: right; }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -146,6 +196,12 @@ if ($order['status'] == 'pending') {
                 <div class="order-id-badge" style="font-weight: 800; color: var(--navy-blue);">Sipariş ID: #<?php echo $order_id; ?></div>
             </div>
 
+            <?php if ($upload_success): ?>
+                <div class="upload-alert success">Taslak basariyla gonderildi. Musteri panelinde onaya dustu.</div>
+            <?php elseif ($upload_error_message !== ''): ?>
+                <div class="upload-alert error"><?php echo htmlspecialchars($upload_error_message); ?></div>
+            <?php endif; ?>
+
             <div class="order-grid">
                 <div class="main-pane">
                     <div class="card-details">
@@ -161,15 +217,23 @@ if ($order['status'] == 'pending') {
                             </div>
                         <?php endif; ?>
 
-                        <?php if ($is_smart): ?>
+                        <?php if ($has_digital_profile): ?>
                             <div style="margin-top: 3rem;">
-                                <strong>Dinamik QR Kod (Akıllı Paket):</strong>
+                                <strong>Dijital Profil ve QR:</strong>
                                 <div class="qr-area">
-                                    <?php if ($profile && isset($profile['qr_path'])): ?>
+                                    <?php if ($profile && !empty($profile['qr_path'])): ?>
                                         <img src="../<?php echo $profile['qr_path']; ?>" alt="QR Code">
                                         <a href="../<?php echo $profile['qr_path']; ?>" download><i data-lucide="download"></i> QR İndir</a>
+                                    <?php elseif ($public_profile_url !== ''): ?>
+                                        <div style="padding: 1.5rem 1rem; color: #334155;">
+                                            <i data-lucide="link-2" style="margin-bottom: 0.5rem;"></i>
+                                            <p style="margin: 0 0 0.5rem; font-weight: 700;">QR gorseli henuz yuklenmedi.</p>
+                                            <a href="<?php echo htmlspecialchars($public_profile_url); ?>" target="_blank" rel="noopener" style="word-break: break-all; font-size: 0.85rem;">
+                                                <?php echo htmlspecialchars($public_profile_url); ?>
+                                            </a>
+                                        </div>
                                     <?php else: ?>
-                                        <div style="padding: 2rem; color: #94a3b8;"><i data-lucide="alert-triangle"></i><br>QR Kod henüz üretilmemiş.</div>
+                                        <div style="padding: 2rem; color: #94a3b8;"><i data-lucide="alert-triangle"></i><br>Profil bilgisi henuz olusturulmamis.</div>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -183,7 +247,7 @@ if ($order['status'] == 'pending') {
                                 <div class="upload-zone" id="uploadZone">
                                     <i data-lucide="upload-cloud"></i>
                                     <p>Taslak Dosyasını Buraya Sürükleyin veya Tıklayın</p>
-                                    <input type="file" name="draft_file" id="draftFile" required>
+                                    <input type="file" name="draft_file" id="draftFile" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" required>
                                 </div>
                                 <div id="fileNameDisplay" style="margin-top: 1rem; font-weight: 700; color: var(--gold); display: none;"></div>
                                 <button type="submit" class="btn-submit-draft">Taslağı Müşteriye Gönder</button>
@@ -211,14 +275,20 @@ if ($order['status'] == 'pending') {
         </main>
     </div>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
     <script>
         lucide.createIcons();
         document.getElementById('draftFile').addEventListener('change', function(e) {
-            const fileName = e.target.files[0].name;
             const display = document.getElementById('fileNameDisplay');
-            display.textContent = 'Seçilen Dosya: ' + fileName;
+            if (!e.target.files || !e.target.files[0]) {
+                display.style.display = 'none';
+                return;
+            }
+            const fileName = e.target.files[0].name;
+            display.textContent = 'Secilen Dosya: ' + fileName;
             display.style.display = 'block';
         });
     </script>
 </body>
 </html>
+

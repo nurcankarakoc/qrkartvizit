@@ -80,6 +80,19 @@ $order = $stmt->fetch();
         
         .form-control { width: 100%; padding: 0.8rem 1.2rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: #f8fafc; transition: 0.3s; margin-top: 1rem; }
         .btn-save { background: var(--navy-blue); color: #fff; border: none; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+
+        @media (max-width: 1024px) {
+            body { display: block; }
+            .main-content { margin-left: 0; padding: 1rem; }
+        }
+
+        @media (max-width: 768px) {
+            .card { padding: 1rem; border-radius: 16px; }
+            header[style*="display: flex"] { flex-direction: column; align-items: flex-start !important; gap: 0.75rem; }
+            .action-flex { flex-direction: column; }
+            .btn-approve, .btn-revise, .btn-save { width: 100%; min-height: 44px; justify-content: center; }
+            .buy-extra { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.25rem; }
+        }
     </style>
 </head>
 <body>
@@ -189,6 +202,8 @@ $order = $stmt->fetch();
 
     </main>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
+    <script src="../assets/js/mobile-form.js"></script>
     <script>
         lucide.createIcons();
     </script>

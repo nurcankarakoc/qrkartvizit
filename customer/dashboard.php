@@ -19,9 +19,44 @@ $stmt = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_a
 $stmt->execute([$user_id]);
 $order = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ?");
+$stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ? ORDER BY id DESC LIMIT 1");
 $stmt->execute([$user_id]);
 $profile = $stmt->fetch();
+
+function has_digital_profile_package(?string $package): bool
+{
+    if (!is_string($package) || $package === '') {
+        return false;
+    }
+
+    $normalized = strtolower(trim($package));
+    return str_contains($normalized, 'panel')
+        || str_contains($normalized, 'smart')
+        || str_contains($normalized, 'akilli');
+}
+
+function project_base_url_for_customer_panel(): string
+{
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    $scheme = $is_https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+    $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/customer/dashboard.php');
+    $project_path = preg_replace('#/customer/[^/]+$#', '', $script_name);
+
+    return $scheme . '://' . $host . rtrim((string)$project_path, '/');
+}
+
+$package_value = (string)($order['package'] ?? '');
+$is_digital_profile_active_for_package = has_digital_profile_package($package_value);
+$profile_slug = trim((string)($profile['slug'] ?? ''));
+$public_profile_url = '';
+
+if ($is_digital_profile_active_for_package && $profile_slug !== '') {
+    $public_profile_url = project_base_url_for_customer_panel()
+        . '/kartvizit.php?slug='
+        . rawurlencode($profile_slug);
+}
 
 ?>
 <!DOCTYPE html>
@@ -34,6 +69,7 @@ $profile = $stmt->fetch();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
@@ -180,12 +216,106 @@ $profile = $stmt->fetch();
         .btn-primary-action { background: var(--navy-blue); color: #fff; }
         .btn-primary-action:hover { background: var(--navy-dark); transform: translateY(-2px); }
 
+        .mobile-topbar,
+        .sidebar-overlay {
+            display: none;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
-            .sidebar { width: 80px; }
-            .sidebar-header, .menu-item span { display: none; }
-            .main-content { margin-left: 80px; padding: 2rem; }
-            .status-grid { grid-template-columns: 1fr; }
+            .mobile-topbar {
+                position: sticky;
+                top: 0;
+                z-index: 1200;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                background: #fff;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 0.75rem 1rem;
+            }
+
+            .mobile-topbar__brand {
+                font-size: 0.95rem;
+                font-weight: 800;
+                color: var(--navy-blue);
+                flex: 1;
+                text-align: center;
+            }
+
+            .mobile-nav-toggle {
+                width: 44px;
+                height: 44px;
+                border: 1px solid #dbeafe;
+                background: #eff6ff;
+                color: var(--navy-blue);
+                border-radius: 12px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+            .sidebar {
+                width: min(86vw, 320px);
+                transform: translateX(-110%);
+                transition: transform 0.28s ease;
+                z-index: 1300;
+            }
+
+            .sidebar.is-open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+                z-index: 1250;
+            }
+
+            .sidebar-overlay.is-open {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            body.sidebar-open {
+                overflow: hidden;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .btn-action,
+            .menu-item,
+            button,
+            .mobile-nav-toggle {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 0.75rem;
+            }
+            .card {
+                padding: 1rem;
+                border-radius: 16px;
+            }
         }
     </style>
 </head>
@@ -282,13 +412,19 @@ $profile = $stmt->fetch();
                     <?php echo strtoupper(substr($user['name'], 0, 1)); ?>
                 </div>
                 <h3 style="font-weight: 800;"><?php echo htmlspecialchars($user['name']); ?></h3>
-                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;"><?php echo $profile['title'] ?? 'Ünvan Belirtilmedi'; ?></p>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;"><?php echo htmlspecialchars($profile['title'] ?? 'Unvan Belirtilmedi'); ?></p>
                 
                 <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem;">
                     <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Dijital Kartvizit Linkiniz:</p>
-                    <a href="#" style="color: var(--primary); font-weight: 700; text-decoration: none; font-size: 0.9rem;">
-                        zerosoft.qr/<?php echo htmlspecialchars($profile['slug'] ?? 'kullanici'); ?>
-                    </a>
+                    <?php if ($public_profile_url !== ''): ?>
+                        <a href="<?php echo htmlspecialchars($public_profile_url); ?>" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 700; text-decoration: none; font-size: 0.9rem; word-break: break-all;">
+                            <?php echo htmlspecialchars($public_profile_url); ?>
+                        </a>
+                    <?php elseif (!$is_digital_profile_active_for_package): ?>
+                        <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Bu pakette dijital profil aktif degil. Dijital erisim icin Panel veya Akilli paket gerekir.</p>
+                    <?php else: ?>
+                        <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Profil linkiniz olusturuluyor. Profil bilgilerinizi kaydedip tekrar deneyin.</p>
+                    <?php endif; ?>
                 </div>
 
                 <a href="profile.php" class="btn-action" style="background: #f1f5f9; color: #1e293b;">
@@ -298,6 +434,7 @@ $profile = $stmt->fetch();
         </div>
     </main>
 
+    <script src="../assets/js/dashboard-mobile.js"></script>
     <script>
         lucide.createIcons();
     </script>
