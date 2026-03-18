@@ -67,6 +67,23 @@ ensure_session_started();
         .form-header { margin-bottom: 3rem; text-align: left; }
         .form-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--navy-blue); }
         .form-header p { color: #64748b; font-size: 1.1rem; }
+        .auth-alert {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .auth-alert-success {
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+            color: #166534;
+        }
+        .auth-alert-error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #b91c1c;
+        }
 
         .form-group { margin-bottom: 2rem; }
         .form-group label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; }
@@ -174,8 +191,14 @@ ensure_session_started();
                     <p>Lütfen bilgilerinizi girerek oturum açın.</p>
                 </div>
 
+                <?php if(isset($_GET['success']) && $_GET['success'] === 'register'): ?>
+                    <div class="auth-alert auth-alert-success">
+                        Siparişiniz başarıyla alındı. Giriş yaparak panelinizden süreci takip edebilirsiniz.
+                    </div>
+                <?php endif; ?>
+
                 <?php if(isset($_GET['error'])): ?>
-                    <div style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; font-weight: 600; font-size: 0.9rem;">
+                    <div class="auth-alert auth-alert-error">
                         <?php 
                             if($_GET['error'] == 'invalid') echo 'E-posta veya şifre hatalı!';
                             elseif($_GET['error'] == 'empty') echo 'Lütfen tüm alanları doldurun.';

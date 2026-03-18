@@ -66,11 +66,54 @@ function normalize_social_url(string $platform, string $raw_url): ?string
         return 'https://wa.me/' . $digits;
     }
 
+    if ($platform === 'phone') {
+        $digits = preg_replace('/\D+/', '', $url);
+        if (!is_string($digits) || $digits === '') {
+            return null;
+        }
+        return 'tel:+' . ltrim($digits, '+');
+    }
+
+    if ($platform === 'maps') {
+        if (filter_var($url, FILTER_VALIDATE_URL)) {
+            return $url;
+        }
+
+        $query = trim($url);
+        if ($query === '') {
+            return null;
+        }
+
+        return 'https://maps.google.com/?q=' . rawurlencode($query);
+    }
+
     if (!preg_match('#^https?://#i', $url)) {
         $url = 'https://' . ltrim($url, '/');
     }
 
     return filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
+}
+
+function normalize_platform_key(string $raw_platform): ?string
+{
+    $platform = strtolower(trim($raw_platform));
+    if ($platform === '') {
+        return null;
+    }
+
+    $platform = str_replace(['twitter', 'x-twitter'], 'x', $platform);
+    $platform = str_replace(['ı', 'İ', 'ş', 'Ş', 'ç', 'Ç', 'ğ', 'Ğ', 'ü', 'Ü', 'ö', 'Ö'], ['i', 'i', 's', 's', 'c', 'c', 'g', 'g', 'u', 'u', 'o', 'o'], $platform);
+    $platform = preg_replace('/[^a-z0-9_-]+/', '_', $platform);
+    if (!is_string($platform)) {
+        return null;
+    }
+
+    $platform = trim($platform, '_-');
+    if ($platform === '') {
+        return null;
+    }
+
+    return substr($platform, 0, 50);
 }
 
 $user_id = (int)$_SESSION['user_id'];
@@ -153,11 +196,18 @@ $stmt->execute([(int)$profile_id]);
 
 if (isset($_POST['platforms']) && is_array($_POST['platforms'])) {
     $insert_stmt = $pdo->prepare("INSERT INTO social_links (profile_id, platform, url) VALUES (?, ?, ?)");
-    $allowed_platforms = ['instagram', 'whatsapp', 'linkedin', 'website', 'mail'];
+    $custom_platforms = isset($_POST['platform_customs']) && is_array($_POST['platform_customs'])
+        ? $_POST['platform_customs']
+        : [];
 
     foreach ($_POST['platforms'] as $index => $platform_raw) {
-        $platform = strtolower(trim((string)$platform_raw));
-        if (!in_array($platform, $allowed_platforms, true)) {
+        $selected_platform = strtolower(trim((string)$platform_raw));
+        $platform_candidate = $selected_platform === '__custom__'
+            ? (string)($custom_platforms[$index] ?? '')
+            : $selected_platform;
+
+        $platform = normalize_platform_key($platform_candidate);
+        if ($platform === null) {
             continue;
         }
 

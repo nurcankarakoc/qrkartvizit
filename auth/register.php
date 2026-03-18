@@ -1,7 +1,60 @@
-<?php
+﻿<?php
 require_once '../core/db.php';
 require_once '../core/security.php';
 ensure_session_started();
+
+$register_error_key = trim((string)($_GET['error'] ?? ''));
+$register_error_map = [
+    'csrf' => 'Güvenlik doğrulaması başarısız oldu. Lütfen formu tekrar gönderin.',
+    'required' => 'Lütfen zorunlu alanları eksiksiz doldurun.',
+    'invalid_email' => 'Geçerli bir e-posta adresi girin.',
+    'kvkk' => 'Devam etmek için KVKK onayı gereklidir.',
+    'email_exists' => 'Bu e-posta adresi zaten kayıtlı.',
+    'logo_upload_error' => 'Logo yüklenirken bir hata oluştu. Lütfen dosyayı tekrar seçin.',
+    'logo_too_large' => 'Logo dosyası en fazla 5 MB olabilir.',
+    'logo_invalid_type' => 'Logo için sadece JPG, PNG veya WEBP dosyası kabul edilir.',
+    'logo_dir_failed' => 'Yükleme klasörü oluşturulamadı. Lütfen daha sonra tekrar deneyin.',
+    'logo_move_failed' => 'Logo dosyası kaydedilemedi. Farklı bir dosya ile tekrar deneyin.',
+    'register_failed' => 'Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+];
+$register_error_message = $register_error_map[$register_error_key] ?? '';
+
+$register_old_input = $_SESSION['register_old_input'] ?? [];
+if (!is_array($register_old_input)) {
+    $register_old_input = [];
+}
+unset($_SESSION['register_old_input']);
+
+$register_error_step = (int)($_SESSION['register_error_step'] ?? 1);
+unset($_SESSION['register_error_step']);
+$register_initial_step = $register_error_message !== '' ? max(1, min(3, $register_error_step)) : 1;
+
+if (!function_exists('register_old')) {
+    function register_old(string $key, string $default = ''): string
+    {
+        global $register_old_input;
+        $value = $register_old_input[$key] ?? $default;
+        return is_string($value) ? $value : $default;
+    }
+}
+
+$register_selected_package = register_old('package', 'smart');
+if (!in_array($register_selected_package, ['classic', 'smart', 'panel'], true)) {
+    $register_selected_package = 'smart';
+}
+
+$register_social_platforms = $register_old_input['social_platforms'] ?? [];
+$register_social_urls = $register_old_input['social_urls'] ?? [];
+$register_social_customs = $register_old_input['social_platform_customs'] ?? [];
+if (!is_array($register_social_platforms)) {
+    $register_social_platforms = [];
+}
+if (!is_array($register_social_urls)) {
+    $register_social_urls = [];
+}
+if (!is_array($register_social_customs)) {
+    $register_social_customs = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -169,6 +222,17 @@ ensure_session_started();
         .form-header p {
             color: #64748b;
             font-size: 1rem;
+        }
+
+        .form-error-banner {
+            margin: 0 0 1rem;
+            padding: 0.85rem 1rem;
+            border-radius: 12px;
+            border: 1px solid #fecaca;
+            background: #fef2f2;
+            color: #991b1b;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
 
         .form-step {
@@ -340,6 +404,124 @@ ensure_session_started();
             background: rgba(166, 128, 63, 0.02);
         }
 
+        .panel-config-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 1rem 1rem 0.25rem;
+            background: #f8fafc;
+            margin-bottom: 1.25rem;
+        }
+
+        .panel-config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .panel-config-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--navy-blue);
+        }
+
+        .panel-state-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .panel-state-badge.active {
+            color: #14532d;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+        }
+
+        .panel-state-badge.inactive {
+            color: #7f1d1d;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+        }
+
+        .panel-state-text {
+            margin: 0 0 0.9rem;
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.45;
+        }
+
+        .panel-disabled-note {
+            margin-bottom: 0.9rem;
+            padding: 0.75rem 0.85rem;
+            border-radius: 10px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .panel-config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .panel-social-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .panel-social-row {
+            display: grid;
+            grid-template-columns: 190px 1fr auto;
+            gap: 0.75rem;
+        }
+
+        .platform-custom-input {
+            margin-top: 0.65rem;
+        }
+
+        .panel-social-remove {
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #ef4444;
+            border-radius: 12px;
+            padding: 0.75rem 0.95rem;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .panel-social-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .panel-social-add {
+            border: none;
+            background: rgba(166, 128, 63, 0.15);
+            color: #8a6428;
+            border-radius: 10px;
+            padding: 0.6rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .panel-social-help {
+            font-size: 0.76rem;
+            color: #64748b;
+        }
+
         .checkbox-group {
             display: flex;
             align-items: flex-start;
@@ -351,6 +533,71 @@ ensure_session_started();
             font-size: 0.85rem;
             color: #64748b;
             line-height: 1.5;
+        }
+
+        .kvkk-link {
+            color: var(--gold);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .kvkk-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 2000;
+        }
+
+        .kvkk-modal-overlay.open {
+            display: flex;
+        }
+
+        .kvkk-modal {
+            width: 100%;
+            max-width: 760px;
+            max-height: 86vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+            padding: 1.25rem;
+        }
+
+        .kvkk-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .kvkk-modal-title {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--navy-blue);
+            font-weight: 800;
+        }
+
+        .kvkk-modal-close {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #0f172a;
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+
+        .kvkk-modal-content p {
+            margin: 0 0 0.7rem;
+            font-size: 0.9rem;
+            color: #334155;
+            line-height: 1.55;
         }
 
         .step-actions {
@@ -442,6 +689,9 @@ ensure_session_started();
             .package-grid { grid-template-columns: 1fr; }
             .package-card { min-height: auto; }
             .form-grid { grid-template-columns: 1fr; }
+            .panel-config-grid { grid-template-columns: 1fr; }
+            .panel-social-row { grid-template-columns: 1fr; }
+            .panel-social-actions { flex-direction: column; align-items: flex-start; }
             .stepper { margin-bottom: 2rem; }
             .step-label { display: none; }
         }
@@ -504,8 +754,14 @@ ensure_session_started();
                     </div>
                 </div>
 
+                <?php if ($register_error_message !== ''): ?>
+                    <div class="form-error-banner"><?php echo htmlspecialchars($register_error_message); ?></div>
+                <?php endif; ?>
+
                 <form id="multi-step-form" action="../processes/register_process.php" method="POST" enctype="multipart/form-data">
                     <?php echo csrf_input(); ?>
+                    <input type="hidden" name="digital_profile_enabled" id="digital-profile-enabled" value="1">
+                    <input type="hidden" name="current_step" id="current-step-input" value="<?php echo (int)$register_initial_step; ?>">
                     
                     <!-- STEP 1: PACKAGE -->
                     <div class="form-step active" id="step-1">
@@ -515,8 +771,8 @@ ensure_session_started();
                         </div>
 
                         <div class="package-grid">
-                            <label class="package-card" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="classic">
+                            <label class="package-card <?php echo $register_selected_package === 'classic' ? 'active' : ''; ?>" onclick="selectPackage(this)">
+                                <input type="radio" name="package" value="classic" <?php echo $register_selected_package === 'classic' ? 'checked' : ''; ?>>
                                 <h4>Klasik</h4>
                                 <span class="price">799 &#8378;</span>
                                 <p class="package-subtitle">Sadece Baskı (dijital panel yok)</p>
@@ -526,8 +782,8 @@ ensure_session_started();
                                     <li>Kurumsal logo ve temel tasarım desteği</li>
                                 </ul>
                             </label>
-                            <label class="package-card active" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="smart" checked>
+                            <label class="package-card <?php echo $register_selected_package === 'smart' ? 'active' : ''; ?>" onclick="selectPackage(this)">
+                                <input type="radio" name="package" value="smart" <?php echo $register_selected_package === 'smart' ? 'checked' : ''; ?>>
                                 <span class="package-badge">EN ÇOK TERCİH EDİLEN</span>
                                 <h4>Akıllı</h4>
                                 <span class="price">1.299 &#8378;</span>
@@ -538,8 +794,8 @@ ensure_session_started();
                                     <li>2 revize hakkı ve panelden kolay yönetim</li>
                                 </ul>
                             </label>
-                            <label class="package-card" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="panel">
+                            <label class="package-card <?php echo $register_selected_package === 'panel' ? 'active' : ''; ?>" onclick="selectPackage(this)">
+                                <input type="radio" name="package" value="panel" <?php echo $register_selected_package === 'panel' ? 'checked' : ''; ?>>
                                 <h4>Sadece Panel</h4>
                                 <span class="price">499 &#8378;/yıl</span>
                                 <p class="package-subtitle">Sadece Dijital Kartvizit Deneyimi</p>
@@ -572,18 +828,18 @@ ensure_session_started();
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Ad Soyad</label>
-                                <input type="text" name="name" class="form-control" placeholder="Mehmet Yılmaz">
+                                <input type="text" name="name" class="form-control" placeholder="Mehmet Yılmaz" value="<?php echo htmlspecialchars(register_old('name')); ?>">
                             </div>
                             <div class="form-group">
                                 <label>E-posta Adresi</label>
-                                <input type="email" name="email" class="form-control" placeholder="mehmet@email.com">
+                                <input type="email" name="email" class="form-control" placeholder="mehmet@email.com" value="<?php echo htmlspecialchars(register_old('email')); ?>">
                             </div>
                         </div>
 
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Telefon Numarası</label>
-                                <input type="tel" name="phone" class="form-control" placeholder="0532 ...">
+                                <input type="tel" name="phone" class="form-control" placeholder="0532 ..." value="<?php echo htmlspecialchars(register_old('phone')); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Şifre Belirleyin</label>
@@ -609,11 +865,11 @@ ensure_session_started();
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Şirket Adı</label>
-                                <input type="text" name="company_name" class="form-control" placeholder="Zerosoft Teknoloji">
+                                <input type="text" name="company_name" class="form-control" placeholder="Zerosoft Teknoloji" value="<?php echo htmlspecialchars(register_old('company_name')); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Mesleki Unvan</label>
-                                <input type="text" name="job_title" class="form-control" placeholder="Yazılım Geliştirici">
+                                <input type="text" name="job_title" class="form-control" placeholder="Yazılım Geliştirici" value="<?php echo htmlspecialchars(register_old('job_title')); ?>">
                             </div>
                         </div>
 
@@ -628,13 +884,84 @@ ensure_session_started();
 
                         <div class="form-group">
                             <label>Tasarım İstekleriniz (Renk, Stil vb.)</label>
-                            <textarea name="design_notes" class="form-control" rows="3" placeholder="Örn: Siyah zemin üzerine altın yaldızlı logomuz olsun..."></textarea>
+                            <textarea name="design_notes" class="form-control" rows="3" placeholder="Örn: Siyah zemin üzerine altın yaldızlı logomuz olsun..."><?php echo htmlspecialchars(register_old('design_notes')); ?></textarea>
                         </div>
 
+                        <div class="panel-config-box" id="digital-panel-config">
+                            <div class="panel-config-header">
+                                <div class="panel-config-title">Dijital Panel Ayarları</div>
+                                <span class="panel-state-badge active" id="panel-state-badge">Aktif</span>
+                            </div>
+                            <p class="panel-state-text" id="panel-state-text">
+                                Seçtiğiniz pakette dijital profil paneli kullanılabilir. Aşağıdaki bilgileri doldurarak profilinizi daha hızlı yayına alabilirsiniz.
+                            </p>
+                            <div class="panel-disabled-note" id="panel-disabled-note" style="display:none;">
+                                Klasik pakette dijital panel kapalıdır. Dijital panel için Akıllı veya Sadece Panel seçin.
+                            </div>
+
+                            <div id="panel-enabled-fields">
+                                <div class="panel-config-grid">
+                                    <div class="form-group">
+                                        <label>Panelde Görünecek İsim</label>
+                                        <input type="text" name="panel_display_name" id="panel-display-name" class="form-control" placeholder="Örn: Mehmet Yılmaz" value="<?php echo htmlspecialchars(register_old('panel_display_name')); ?>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Panel Tema Rengi</label>
+                                        <select name="theme_color" id="theme-color" class="form-control">
+                                            <option value="#0A2F2F" <?php echo register_old('theme_color', '#0A2F2F') === '#0A2F2F' ? 'selected' : ''; ?>>Gece Lacivert</option>
+                                            <option value="#065F46" <?php echo register_old('theme_color') === '#065F46' ? 'selected' : ''; ?>>Zümrüt</option>
+                                            <option value="#0F766E" <?php echo register_old('theme_color') === '#0F766E' ? 'selected' : ''; ?>>Turkuaz</option>
+                                            <option value="#0EA5E9" <?php echo register_old('theme_color') === '#0EA5E9' ? 'selected' : ''; ?>>Açık Mavi</option>
+                                            <option value="#1D4ED8" <?php echo register_old('theme_color') === '#1D4ED8' ? 'selected' : ''; ?>>Mavi</option>
+                                            <option value="#2563EB" <?php echo register_old('theme_color') === '#2563EB' ? 'selected' : ''; ?>>Kraliyet Mavi</option>
+                                            <option value="#4F46E5" <?php echo register_old('theme_color') === '#4F46E5' ? 'selected' : ''; ?>>İndigo</option>
+                                            <option value="#7C3AED" <?php echo register_old('theme_color') === '#7C3AED' ? 'selected' : ''; ?>>Mor</option>
+                                            <option value="#9333EA" <?php echo register_old('theme_color') === '#9333EA' ? 'selected' : ''; ?>>Viyole</option>
+                                            <option value="#C026D3" <?php echo register_old('theme_color') === '#C026D3' ? 'selected' : ''; ?>>Fuşya</option>
+                                            <option value="#DB2777" <?php echo register_old('theme_color') === '#DB2777' ? 'selected' : ''; ?>>Pembe</option>
+                                            <option value="#BE123C" <?php echo register_old('theme_color') === '#BE123C' ? 'selected' : ''; ?>>Kırmızı</option>
+                                            <option value="#EA580C" <?php echo register_old('theme_color') === '#EA580C' ? 'selected' : ''; ?>>Turuncu</option>
+                                            <option value="#CA8A04" <?php echo register_old('theme_color') === '#CA8A04' ? 'selected' : ''; ?>>Amber</option>
+                                            <option value="#15803D" <?php echo register_old('theme_color') === '#15803D' ? 'selected' : ''; ?>>Orman Yeşili</option>
+                                            <option value="#0F172A" <?php echo register_old('theme_color') === '#0F172A' ? 'selected' : ''; ?>>Gece Siyahı</option>
+                                            <option value="#334155" <?php echo register_old('theme_color') === '#334155' ? 'selected' : ''; ?>>Antrasit</option>
+                                            <option value="#4B5563" <?php echo register_old('theme_color') === '#4B5563' ? 'selected' : ''; ?>>Gri</option>
+                                            <option value="#FFFFFF" <?php echo register_old('theme_color') === '#FFFFFF' ? 'selected' : ''; ?>>Beyaz</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Kısa Profil Biyografisi</label>
+                                    <textarea name="panel_bio" id="panel-bio" class="form-control" rows="2" placeholder="Uzmanlık alanlarınızı ve sunduğunuz hizmetleri kısa bir metinle anlatın."><?php echo htmlspecialchars(register_old('panel_bio')); ?></textarea>
+                                </div>
+
+                                <div class="panel-config-grid">
+                                    <div class="form-group">
+                                        <label>Web Sitesi</label>
+                                        <input type="url" name="panel_website" class="form-control" placeholder="https://ornek.com" value="<?php echo htmlspecialchars(register_old('panel_website')); ?>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>İş Adresi</label>
+                                        <input type="text" name="panel_address" class="form-control" placeholder="İl, ilçe, mahalle veya açık adres" value="<?php echo htmlspecialchars(register_old('panel_address')); ?>">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Hızlı İletişim Linkleri (Opsiyonel)</label>
+                                    <div class="panel-social-list" id="register-social-links-container">
+                                    </div>
+                                    <div class="panel-social-actions">
+                                        <button type="button" class="panel-social-add" id="add-register-social-link">+ Link Ekle</button>
+                                        <span class="panel-social-help">Instagram, LinkedIn, X/Twitter, Telegram, YouTube veya özel platform girebilirsiniz.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="checkbox-group">
                             <input type="checkbox" id="kvkk" name="kvkk_approved" value="1" required>
                             <label for="kvkk">
-                                <a href="#" style="color: var(--gold); font-weight: 700; text-decoration: none;">KVKK Aydınlatma Metni</a>'ni okudum ve onaylıyorum.
+                                <a href="#" id="kvkk-open" class="kvkk-link">KVKK Aydınlatma Metni</a>'ni okudum ve onaylıyorum.
                             </label>
                         </div>
 
@@ -654,11 +981,205 @@ ensure_session_started();
         </main>
     </div>
 
+    <div class="kvkk-modal-overlay" id="kvkk-modal" aria-hidden="true">
+        <div class="kvkk-modal" role="dialog" aria-modal="true" aria-labelledby="kvkk-modal-title">
+            <div class="kvkk-modal-header">
+                <h3 class="kvkk-modal-title" id="kvkk-modal-title">KVKK Aydınlatma Metni</h3>
+                <button type="button" class="kvkk-modal-close" id="kvkk-close">Kapat</button>
+            </div>
+            <div class="kvkk-modal-content">
+                <p>6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında, veri sorumlusu sıfatıyla Zerosoft tarafından ad-soyad, telefon, e-posta, şirket bilgisi, sipariş ve tasarım talepleriniz işlenmektedir.</p>
+                <p>Kişisel verileriniz; üyelik oluşturma, sipariş yönetimi, müşteri destek süreçleri, faturalama ve dijital kartvizit hizmetinin sunulması amaçlarıyla sınırlı olarak işlenir.</p>
+                <p>Verileriniz, yasal yükümlülüklerin yerine getirilmesi ve hizmetin yürütülmesi amacıyla anlaşmalı hizmet sağlayıcılarla ve kanunen yetkili kamu kurumlarıyla paylaşılabilir.</p>
+                <p>Kanunun 11. maddesi uyarınca kişisel verilerinize ilişkin erişim, düzeltme, silme, işlemeyi kısıtlama ve itiraz haklarınızı kullanabilirsiniz.</p>
+                <p>Başvurularınızı destek@zerosoft.com e-posta adresi üzerinden veya yazılı olarak iletebilirsiniz.</p>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/js/mobile-form.js"></script>
     <script>
         lucide.createIcons();
 
-        let currentStep = 1;
+        let currentStep = <?php echo (int)$register_initial_step; ?>;
+        const registerInitialStep = <?php echo (int)$register_initial_step; ?>;
+        const oldRegisterSocialPlatforms = <?php echo json_encode(array_values($register_social_platforms), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const oldRegisterSocialUrls = <?php echo json_encode(array_values($register_social_urls), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const oldRegisterSocialCustoms = <?php echo json_encode(array_values($register_social_customs), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const digitalPackages = ['smart', 'panel'];
+        const SOCIAL_PLATFORM_OPTIONS = [
+            { value: 'instagram', label: 'Instagram' },
+            { value: 'linkedin', label: 'LinkedIn' },
+            { value: 'whatsapp', label: 'WhatsApp' },
+            { value: 'x', label: 'X / Twitter' },
+            { value: 'telegram', label: 'Telegram' },
+            { value: 'youtube', label: 'YouTube' },
+            { value: 'facebook', label: 'Facebook' },
+            { value: 'tiktok', label: 'TikTok' },
+            { value: 'twitch', label: 'Twitch' },
+            { value: 'github', label: 'GitHub' },
+            { value: 'behance', label: 'Behance' },
+            { value: 'dribbble', label: 'Dribbble' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'threads', label: 'Threads' },
+            { value: 'snapchat', label: 'Snapchat' },
+            { value: 'pinterest', label: 'Pinterest' },
+            { value: 'website', label: 'Web Sitesi' },
+            { value: 'mail', label: 'E-posta' },
+            { value: 'phone', label: 'Telefon' },
+            { value: 'maps', label: 'Harita Konumu' },
+            { value: '__custom__', label: 'Diğer (Özel)' }
+        ];
+
+        function getSelectedPackage() {
+            const selected = document.querySelector('input[name="package"]:checked');
+            return selected ? selected.value : 'smart';
+        }
+
+        function syncCurrentStepInput() {
+            const stepInput = document.getElementById('current-step-input');
+            if (stepInput) {
+                stepInput.value = String(currentStep);
+            }
+        }
+
+        function applyInitialStepState() {
+            document.querySelectorAll('.form-step').forEach((stepEl) => stepEl.classList.remove('active'));
+            document.querySelectorAll('.step-item').forEach((itemEl) => itemEl.classList.remove('active', 'completed'));
+
+            for (let i = 1; i <= 3; i++) {
+                const stepCard = document.getElementById(`step-id-${i}`);
+                if (!stepCard) continue;
+                if (i < currentStep) stepCard.classList.add('completed');
+                if (i === currentStep) stepCard.classList.add('active');
+            }
+
+            const activeStep = document.getElementById(`step-${currentStep}`);
+            if (activeStep) {
+                activeStep.classList.add('active');
+            }
+
+            syncCurrentStepInput();
+        }
+
+        function buildRegisterPlatformOptions(selectedValue) {
+            return SOCIAL_PLATFORM_OPTIONS.map((option) => {
+                const selectedAttr = option.value === selectedValue ? 'selected' : '';
+                return `<option value="${option.value}" ${selectedAttr}>${option.label}</option>`;
+            }).join('');
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function toggleRegisterCustomPlatformInput(row) {
+            if (!row) return;
+            const select = row.querySelector('select[name="social_platforms[]"]');
+            const customInput = row.querySelector('input[name="social_platform_customs[]"]');
+            if (!select || !customInput) return;
+            const isCustom = select.value === '__custom__';
+            customInput.style.display = isCustom ? 'block' : 'none';
+            customInput.disabled = !isCustom;
+            if (!isCustom) {
+                customInput.value = '';
+            }
+        }
+
+        function removeRegisterSocialRow(button) {
+            const row = button.closest('.register-social-link-item');
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function addRegisterSocialRow(platform = 'instagram', url = '', customPlatform = '') {
+            const container = document.getElementById('register-social-links-container');
+            if (!container) return;
+
+            const row = document.createElement('div');
+            row.className = 'register-social-link-item';
+
+            const isCustom = !SOCIAL_PLATFORM_OPTIONS.some((option) => option.value === platform);
+            const selectedPlatform = isCustom ? '__custom__' : platform;
+            const customValue = isCustom ? platform : customPlatform;
+            const safeUrl = escapeHtml(url);
+            const safeCustomValue = escapeHtml(customValue);
+
+            row.innerHTML = `
+                <div class="panel-social-row">
+                    <select name="social_platforms[]" class="form-control">${buildRegisterPlatformOptions(selectedPlatform)}</select>
+                    <input type="text" name="social_urls[]" class="form-control" placeholder="URL, kullanıcı adı veya numara" value="${safeUrl}">
+                    <button type="button" class="panel-social-remove" aria-label="Satırı kaldır">Sil</button>
+                </div>
+                <input type="text" name="social_platform_customs[]" class="form-control platform-custom-input" placeholder="Özel platform adı (örn: patreon, substack, x)" value="${safeCustomValue}">
+            `;
+
+            container.appendChild(row);
+
+            const select = row.querySelector('select[name="social_platforms[]"]');
+            const removeButton = row.querySelector('.panel-social-remove');
+            if (select) {
+                select.addEventListener('change', () => toggleRegisterCustomPlatformInput(row));
+            }
+            if (removeButton) {
+                removeButton.addEventListener('click', () => removeRegisterSocialRow(removeButton));
+            }
+
+            toggleRegisterCustomPlatformInput(row);
+        }
+
+        function syncPanelDisplayName() {
+            const fullNameInput = document.querySelector('input[name="name"]');
+            const panelNameInput = document.getElementById('panel-display-name');
+            if (!fullNameInput || !panelNameInput) return;
+            if (panelNameInput.value.trim() === '') {
+                panelNameInput.value = fullNameInput.value.trim();
+            }
+        }
+
+        function updateDigitalPanelUI() {
+            const selectedPackage = getSelectedPackage();
+            const isDigitalActive = digitalPackages.includes(selectedPackage);
+
+            const badge = document.getElementById('panel-state-badge');
+            const text = document.getElementById('panel-state-text');
+            const disabledNote = document.getElementById('panel-disabled-note');
+            const enabledFields = document.getElementById('panel-enabled-fields');
+            const hiddenState = document.getElementById('digital-profile-enabled');
+
+            if (!badge || !text || !disabledNote || !enabledFields || !hiddenState) return;
+
+            hiddenState.value = isDigitalActive ? '1' : '0';
+
+            badge.classList.remove('active', 'inactive');
+            badge.classList.add(isDigitalActive ? 'active' : 'inactive');
+            badge.textContent = isDigitalActive ? 'Aktif' : 'Pasif';
+
+            if (selectedPackage === 'panel') {
+                text.textContent = 'Sadece Panel paketinde dijital kartvizit siteniz aktif olur. Bu ayarlar profilinizi doğrudan yayına hazırlar.';
+            } else if (selectedPackage === 'smart') {
+                text.textContent = 'Akıllı pakette dijital panel ve baskı birlikte gelir. Bu bölümdeki bilgiler hem panelde hem QR hedef sayfasında kullanılabilir.';
+            } else {
+                text.textContent = 'Klasik pakette dijital panel bulunmaz. Bu nedenle aşağıdaki dijital panel alanları pasif durumdadır.';
+            }
+
+            disabledNote.style.display = isDigitalActive ? 'none' : 'block';
+            enabledFields.style.display = isDigitalActive ? 'block' : 'none';
+
+            enabledFields.querySelectorAll('input, textarea, select').forEach((field) => {
+                field.disabled = !isDigitalActive;
+            });
+
+            if (isDigitalActive) {
+                syncPanelDisplayName();
+            }
+        }
 
         function nextStep(step) {
             // Basic validation for Step 2
@@ -684,6 +1205,7 @@ ensure_session_started();
             
             document.getElementById(`step-${currentStep}`).classList.add('active');
             document.getElementById(`step-id-${currentStep}`).classList.add('active');
+            syncCurrentStepInput();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -696,19 +1218,90 @@ ensure_session_started();
             document.getElementById(`step-${currentStep}`).classList.add('active');
             document.getElementById(`step-id-${currentStep}`).classList.remove('completed');
             document.getElementById(`step-id-${currentStep}`).classList.add('active');
+            syncCurrentStepInput();
         }
 
         function selectPackage(card) {
             document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
             card.classList.add('active');
             card.querySelector('input').checked = true;
+            updateDigitalPanelUI();
         }
 
         function updateFileName(input) {
             const fileName = input.files[0] ? input.files[0].name : "Logo dosyasını sürükleyin veya seçin";
             document.getElementById('file-name').innerText = fileName;
         }
+
+        document.querySelectorAll('input[name="package"]').forEach((input) => {
+            input.addEventListener('change', updateDigitalPanelUI);
+        });
+
+        const nameInput = document.querySelector('input[name="name"]');
+        if (nameInput) {
+            nameInput.addEventListener('blur', syncPanelDisplayName);
+        }
+
+        const addRegisterSocialBtn = document.getElementById('add-register-social-link');
+        if (addRegisterSocialBtn) {
+            addRegisterSocialBtn.addEventListener('click', () => addRegisterSocialRow());
+        }
+
+        if (oldRegisterSocialPlatforms.length > 0) {
+            oldRegisterSocialPlatforms.forEach((platform, index) => {
+                const url = typeof oldRegisterSocialUrls[index] === 'string' ? oldRegisterSocialUrls[index] : '';
+                const customPlatform = typeof oldRegisterSocialCustoms[index] === 'string' ? oldRegisterSocialCustoms[index] : '';
+                addRegisterSocialRow(String(platform || 'instagram'), url, customPlatform);
+            });
+        } else {
+            addRegisterSocialRow('instagram');
+        }
+
+        const kvkkModal = document.getElementById('kvkk-modal');
+        const kvkkOpen = document.getElementById('kvkk-open');
+        const kvkkClose = document.getElementById('kvkk-close');
+
+        function openKvkkModal(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!kvkkModal) return;
+            kvkkModal.classList.add('open');
+            kvkkModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeKvkkModal() {
+            if (!kvkkModal) return;
+            kvkkModal.classList.remove('open');
+            kvkkModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (kvkkOpen) {
+            kvkkOpen.addEventListener('click', openKvkkModal);
+        }
+        if (kvkkClose) {
+            kvkkClose.addEventListener('click', closeKvkkModal);
+        }
+        if (kvkkModal) {
+            kvkkModal.addEventListener('click', (event) => {
+                if (event.target === kvkkModal) {
+                    closeKvkkModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeKvkkModal();
+            }
+        });
+
+        applyInitialStepState();
+        updateDigitalPanelUI();
     </script>
 </body>
 </html>
+
+
 

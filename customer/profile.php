@@ -77,6 +77,31 @@ $stmt = $pdo->prepare("SELECT * FROM social_links WHERE profile_id = ?");
 $stmt->execute([$profile['id']]);
 $links = $stmt->fetchAll();
 
+$social_platform_options = [
+    ['value' => 'instagram', 'label' => 'Instagram'],
+    ['value' => 'linkedin', 'label' => 'LinkedIn'],
+    ['value' => 'whatsapp', 'label' => 'WhatsApp'],
+    ['value' => 'x', 'label' => 'X / Twitter'],
+    ['value' => 'telegram', 'label' => 'Telegram'],
+    ['value' => 'youtube', 'label' => 'YouTube'],
+    ['value' => 'facebook', 'label' => 'Facebook'],
+    ['value' => 'tiktok', 'label' => 'TikTok'],
+    ['value' => 'twitch', 'label' => 'Twitch'],
+    ['value' => 'github', 'label' => 'GitHub'],
+    ['value' => 'behance', 'label' => 'Behance'],
+    ['value' => 'dribbble', 'label' => 'Dribbble'],
+    ['value' => 'medium', 'label' => 'Medium'],
+    ['value' => 'threads', 'label' => 'Threads'],
+    ['value' => 'snapchat', 'label' => 'Snapchat'],
+    ['value' => 'pinterest', 'label' => 'Pinterest'],
+    ['value' => 'website', 'label' => 'Web Sitesi'],
+    ['value' => 'mail', 'label' => 'E-posta'],
+    ['value' => 'phone', 'label' => 'Telefon'],
+    ['value' => 'maps', 'label' => 'Harita Konumu'],
+    ['value' => '__custom__', 'label' => 'Diğer (Özel)'],
+];
+$social_platform_values = array_column($social_platform_options, 'value');
+
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -115,7 +140,8 @@ $links = $stmt->fetchAll();
         .image-upload img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
         .image-upload i { color: #94a3b8; }
 
-        .social-link-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 1rem; margin-bottom: 1rem; }
+        .social-link-row { display: grid; grid-template-columns: 190px 1fr auto; gap: 1rem; margin-bottom: 1rem; }
+        .platform-custom-input { margin-top: 0.65rem; }
         .two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
         .btn-save { background: var(--navy-blue); color: #fff; border: none; padding: 1rem 2.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
@@ -227,27 +253,35 @@ $links = $stmt->fetchAll();
                 <div id="social-links-container">
                     <?php if(empty($links)): ?>
                         <div class="social-link-row">
-                            <select name="platforms[]" class="form-control">
-                                <option value="instagram">Instagram</option>
-                                <option value="whatsapp">WhatsApp</option>
-                                <option value="linkedin">LinkedIn</option>
-                                <option value="website">Web Sitesi</option>
-                                <option value="mail">E-posta</option>
+                            <select name="platforms[]" class="form-control" onchange="handleProfilePlatformChange(this)">
+                                <?php foreach ($social_platform_options as $opt): ?>
+                                    <option value="<?php echo htmlspecialchars($opt['value']); ?>" <?php echo $opt['value'] === 'instagram' ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($opt['label']); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                             <input type="text" name="urls[]" class="form-control" placeholder="Linkinizi buraya yapıştırın...">
+                            <input type="text" name="platform_customs[]" class="form-control platform-custom-input" placeholder="Özel platform adı (örn: substack, patreon)" style="display:none;" disabled>
                             <button type="button" class="btn-save" style="background:#f1f5f9; color:#ef4444; padding:0.8rem; height: auto;" onclick="removeRow(this)">Sil</button>
                         </div>
                     <?php else: ?>
                         <?php foreach($links as $link): ?>
+                            <?php
+                                $platform_raw = strtolower(trim((string)($link['platform'] ?? '')));
+                                $is_custom_platform = !in_array($platform_raw, $social_platform_values, true);
+                                $selected_platform = $is_custom_platform ? '__custom__' : $platform_raw;
+                                $custom_platform_value = $is_custom_platform ? $platform_raw : '';
+                            ?>
                             <div class="social-link-row">
-                                <select name="platforms[]" class="form-control">
-                                    <option value="instagram" <?php echo $link['platform'] == 'instagram' ? 'selected' : ''; ?>>Instagram</option>
-                                    <option value="whatsapp" <?php echo $link['platform'] == 'whatsapp' ? 'selected' : ''; ?>>WhatsApp</option>
-                                    <option value="linkedin" <?php echo $link['platform'] == 'linkedin' ? 'selected' : ''; ?>>LinkedIn</option>
-                                    <option value="website" <?php echo $link['platform'] == 'website' ? 'selected' : ''; ?>>Web Sitesi</option>
-                                    <option value="mail" <?php echo $link['platform'] == 'mail' ? 'selected' : ''; ?>>E-posta</option>
+                                <select name="platforms[]" class="form-control" onchange="handleProfilePlatformChange(this)">
+                                    <?php foreach ($social_platform_options as $opt): ?>
+                                        <option value="<?php echo htmlspecialchars($opt['value']); ?>" <?php echo $opt['value'] === $selected_platform ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($opt['label']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
                                 </select>
                                 <input type="text" name="urls[]" class="form-control" value="<?php echo htmlspecialchars($link['url']); ?>" placeholder="Linkinizi buraya yapıştırın...">
+                                <input type="text" name="platform_customs[]" class="form-control platform-custom-input" placeholder="Özel platform adı (örn: substack, patreon)" value="<?php echo htmlspecialchars($custom_platform_value); ?>" <?php echo $is_custom_platform ? '' : 'style="display:none;" disabled'; ?>>
                                 <button type="button" class="btn-save" style="background:#f1f5f9; color:#ef4444; padding:0.8rem; height: auto;" onclick="removeRow(this)">Sil</button>
                             </div>
                         <?php endforeach; ?>
@@ -268,19 +302,38 @@ $links = $stmt->fetchAll();
     <script>
         lucide.createIcons();
 
+        const PROFILE_PLATFORM_OPTIONS = <?php echo json_encode($social_platform_options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+        function buildProfilePlatformOptions(selectedValue = 'instagram') {
+            return PROFILE_PLATFORM_OPTIONS.map((option) => {
+                const selectedAttr = option.value === selectedValue ? 'selected' : '';
+                return `<option value="${option.value}" ${selectedAttr}>${option.label}</option>`;
+            }).join('');
+        }
+
+        function handleProfilePlatformChange(selectEl) {
+            const row = selectEl.closest('.social-link-row');
+            if (!row) return;
+            const customInput = row.querySelector('input[name="platform_customs[]"]');
+            if (!customInput) return;
+            const isCustom = selectEl.value === '__custom__';
+            customInput.style.display = isCustom ? 'block' : 'none';
+            customInput.disabled = !isCustom;
+            if (!isCustom) {
+                customInput.value = '';
+            }
+        }
+
         function addSocialRow() {
             const container = document.getElementById('social-links-container');
             const row = document.createElement('div');
             row.className = 'social-link-row';
             row.innerHTML = `
-                <select name="platforms[]" class="form-control">
-                    <option value="instagram">Instagram</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="website">Web Sitesi</option>
-                    <option value="mail">E-posta</option>
+                <select name="platforms[]" class="form-control" onchange="handleProfilePlatformChange(this)">
+                    ${buildProfilePlatformOptions('instagram')}
                 </select>
                 <input type="text" name="urls[]" class="form-control" placeholder="Linkinizi buraya yapıştırın...">
+                <input type="text" name="platform_customs[]" class="form-control platform-custom-input" placeholder="Özel platform adı (örn: substack, patreon)" style="display:none;" disabled>
                 <button type="button" class="btn-save" style="background:#f1f5f9; color:#ef4444; padding:0.8rem; height: auto;" onclick="removeRow(this)">Sil</button>
             `;
             container.appendChild(row);
@@ -305,6 +358,10 @@ $links = $stmt->fetchAll();
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        document.querySelectorAll('#social-links-container select[name="platforms[]"]').forEach((selectEl) => {
+            handleProfilePlatformChange(selectEl);
+        });
     </script>
 </body>
 </html>
