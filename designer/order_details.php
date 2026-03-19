@@ -49,6 +49,27 @@ function has_digital_profile_package(?string $package): bool
         || str_contains($normalized, 'akilli');
 }
 
+function project_base_url_for_designer(): string
+{
+    $env_app_url = trim((string)getenv('APP_URL'));
+    if ($env_app_url !== '') {
+        return rtrim($env_app_url, '/');
+    }
+
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    $scheme = $is_https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+    $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/designer/order_details.php');
+    $project_path = preg_replace('#/designer/[^/]+$#', '', $script_name);
+    return $scheme . '://' . $host . rtrim((string)$project_path, '/');
+}
+
+function build_dynamic_qr_url(string $target_url): string
+{
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=700x700&ecc=M&data=' . rawurlencode($target_url);
+}
+
 // Digital package check
 $package_value = (string)($order['package'] ?? '');
 $has_digital_profile = has_digital_profile_package($package_value);
@@ -61,7 +82,20 @@ $profile = $stmt_profile->fetch();
 $public_profile_url = '';
 
 if ($profile && !empty($profile['slug'])) {
-    $public_profile_url = '../kartvizit.php?slug=' . rawurlencode((string)$profile['slug']);
+    $public_profile_url = project_base_url_for_designer() . '/kartvizit.php?slug=' . rawurlencode((string)$profile['slug']);
+}
+$resolved_qr_path = trim((string)($profile['qr_path'] ?? ''));
+if ($resolved_qr_path === '' && $public_profile_url !== '') {
+    $resolved_qr_path = build_dynamic_qr_url($public_profile_url);
+}
+$resolved_qr_asset = $resolved_qr_path;
+if (
+    $resolved_qr_asset !== '' &&
+    !preg_match('#^https?://#i', $resolved_qr_asset) &&
+    !str_starts_with($resolved_qr_asset, '../') &&
+    !str_starts_with($resolved_qr_asset, '/')
+) {
+    $resolved_qr_asset = '../' . $resolved_qr_asset;
 }
 
 // Fetch existing drafts
@@ -73,8 +107,8 @@ try {
     $drafts = [];
 }
 
-// Update status to 'designing' if it's 'pending'
-if ($order['status'] == 'pending') {
+// Move order into designing state when designer opens new work.
+if (in_array((string)$order['status'], ['pending', 'pending_design'], true)) {
     $pdo->prepare("UPDATE orders SET status = 'designing' WHERE id = ?")->execute([$order_id]);
     $order['status'] = 'designing';
 }
@@ -171,8 +205,8 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li><a href="#"><i data-lucide="image"></i> Tasarımlarım</a></li>
-                    <li><a href="#"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
+                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarimlarim</a></li>
+                    <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
             </nav>
@@ -221,9 +255,9 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
                             <div style="margin-top: 3rem;">
                                 <strong>Dijital Profil ve QR:</strong>
                                 <div class="qr-area">
-                                    <?php if ($profile && !empty($profile['qr_path'])): ?>
-                                        <img src="../<?php echo $profile['qr_path']; ?>" alt="QR Code">
-                                        <a href="../<?php echo $profile['qr_path']; ?>" download><i data-lucide="download"></i> QR İndir</a>
+                                    <?php if ($resolved_qr_asset !== ''): ?>
+                                        <img src="<?php echo htmlspecialchars($resolved_qr_asset); ?>" alt="QR Code">
+                                        <a href="../processes/designer_qr_download.php?order_id=<?php echo (int)$order_id; ?>"><i data-lucide="download"></i> QR Indir</a>
                                     <?php elseif ($public_profile_url !== ''): ?>
                                         <div style="padding: 1.5rem 1rem; color: #334155;">
                                             <i data-lucide="link-2" style="margin-bottom: 0.5rem;"></i>

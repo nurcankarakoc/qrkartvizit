@@ -8,7 +8,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'customer') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$user_id = (int)$_SESSION['user_id'];
 
 // Kullanıcı bilgilerini ve son siparişi çek
 $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -177,8 +182,13 @@ if ($is_digital_profile_active_for_package && $profile_slug !== '') {
         }
 
         .status-pending { background: #fef3c7; color: #92400e; }
+        .status-awaiting_approval { background: #fff7ed; color: #9a3412; }
         .status-designing { background: #eff6ff; color: var(--navy-blue); border: 1px solid #dbeafe; }
+        .status-revision_requested { background: #fff1f2; color: #be123c; }
         .status-approved { background: #dcfce7; color: #166534; }
+        .status-printing { background: #e0f2fe; color: #0c4a6e; }
+        .status-shipping { background: #ede9fe; color: #5b21b6; }
+        .status-disputed { background: #fef2f2; color: #991b1b; }
         .status-completed { background: #f1f5f9; color: #475569; }
 
         .profile-preview-card {

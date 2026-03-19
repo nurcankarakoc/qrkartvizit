@@ -10,11 +10,11 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {
 
 $designer_id = $_SESSION['user_id'];
 
-// New Orders: status = 'pending'
+// New Orders pool
 $stmt_new = $pdo->prepare("SELECT o.*, u.name as customer_name 
                            FROM orders o 
                            JOIN users u ON o.user_id = u.id
-                           WHERE o.status = 'pending' 
+                           WHERE o.status IN ('pending', 'pending_design') 
                            ORDER BY o.created_at DESC");
 $stmt_new->execute();
 $new_orders = $stmt_new->fetchAll();
@@ -66,8 +66,8 @@ $completed_orders = $stmt_completed->fetchAll();
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li><a href="#"><i data-lucide="image"></i> Tasarımlarım</a></li>
-                    <li><a href="#"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
+                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarimlarim</a></li>
+                    <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
             </nav>
@@ -134,7 +134,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     <section class="table-container">
                         <div class="table-header">
                             <h2>Yeni Sipariş Havuzu</h2>
-                            <a href="#" class="view-all">Tümünü Gör</a>
+                            <a href="designs.php?filter=pending" class="view-all">Tumunu Gor</a>
                         </div>
                         <table class="data-table">
                             <thead>
@@ -173,7 +173,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     <section class="table-container">
                         <div class="table-header">
                             <h2>Üzerimdeki İşler</h2>
-                            <a href="#" class="view-all">Tümünü Gör</a>
+                            <a href="designs.php" class="view-all">Tumunu Gor</a>
                         </div>
                         <table class="data-table">
                             <thead>

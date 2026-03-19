@@ -20,10 +20,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        if (isset($user['is_active']) && (int)$user['is_active'] !== 1) {
+            header("Location: ../auth/login.php?error=inactive");
+            exit();
+        }
+
         session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_role'] = $user['role'];
+
+        try {
+            $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?")->execute([(int)$user['id']]);
+        } catch (Throwable $e) {
+            // no-op: login should continue even if this optional column does not exist
+        }
 
         if ($user['role'] == 'admin') {
             header("Location: ../admin/dashboard.php");

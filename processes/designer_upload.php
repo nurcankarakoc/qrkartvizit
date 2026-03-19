@@ -43,6 +43,14 @@ if ($order_id <= 0 || $designer_id <= 0) {
     exit();
 }
 
+$stmt_order = $pdo->prepare("SELECT id, status FROM orders WHERE id = ?");
+$stmt_order->execute([$order_id]);
+$order = $stmt_order->fetch();
+if (!$order) {
+    header("Location: ../designer/dashboard.php?error=invalid_order");
+    exit();
+}
+
 if (!isset($_FILES['draft_file'])) {
     redirect_order_error($order_id, 'upload_no_file');
 }

@@ -79,6 +79,10 @@ $designers = $stmt_designers->fetchAll();
                 <h1>Tasarımcı Yönetimi</h1>
                 <?php if($message == 'added'): ?>
                     <div style="background: #dcfce7; color: #166534; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; font-size: 0.9rem;">Tasarımcı başarıyla eklendi!</div>
+                <?php elseif($message == 'invalid'): ?>
+                    <div style="background: #fef2f2; color: #991b1b; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; font-size: 0.9rem;">Lutfen gecerli bilgiler girin. Sifre en az 6 karakter olmalidir.</div>
+                <?php elseif($message == 'exists'): ?>
+                    <div style="background: #fef2f2; color: #991b1b; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; font-size: 0.9rem;">Bu e-posta adresi zaten kayitli.</div>
                 <?php endif; ?>
             </header>
 

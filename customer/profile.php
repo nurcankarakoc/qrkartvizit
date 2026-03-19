@@ -8,7 +8,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'customer') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$user_id = (int)$_SESSION['user_id'];
 
 function has_digital_profile_package(?string $package): bool
 {
@@ -101,6 +106,12 @@ $social_platform_options = [
     ['value' => '__custom__', 'label' => 'Diğer (Özel)'],
 ];
 $social_platform_values = array_column($social_platform_options, 'value');
+$resolved_brand_color = '#0A2F2F';
+if (!empty($profile['brand_color']) && preg_match('/^#[0-9a-fA-F]{6}$/', (string)$profile['brand_color'])) {
+    $resolved_brand_color = strtoupper((string)$profile['brand_color']);
+} elseif (!empty($profile['theme_color']) && preg_match('/^#[0-9a-fA-F]{6}$/', (string)$profile['theme_color'])) {
+    $resolved_brand_color = strtoupper((string)$profile['theme_color']);
+}
 
 ?>
 <!DOCTYPE html>
@@ -190,16 +201,35 @@ $social_platform_values = array_column($social_platform_options, 'value');
         <form action="../processes/profile_update.php" method="POST" enctype="multipart/form-data">
             <?php echo csrf_input(); ?>
             <div class="card">
-                <div class="form-group">
-                    <label>Profil Fotoğrafı</label>
-                    <div class="image-upload" onclick="document.getElementById('photo').click()">
-                        <?php if($profile['photo_path']): ?>
-                            <img src="<?php echo $profile['photo_path']; ?>" alt="Profile">
-                        <?php else: ?>
-                            <i data-lucide="camera" style="width: 32px; height: 32px;"></i>
-                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Yükle</span>
-                        <?php endif; ?>
-                        <input type="file" id="photo" name="photo" hidden onchange="previewImage(this)">
+                <div class="form-group" style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:wrap;">
+                    <!-- Profil Fotoğrafı -->
+                    <div>
+                        <label style="margin-bottom:0.5rem; font-weight:700; font-size:0.9rem; color:#475569; display:block;">Profil Fotoğrafı</label>
+                        <div class="image-upload" onclick="document.getElementById('photo').click()">
+                            <?php if(!empty($profile['photo_path'])): ?>
+                                <img src="<?php echo htmlspecialchars($profile['photo_path']); ?>" alt="Profile">
+                            <?php else: ?>
+                                <i data-lucide="camera" style="width: 32px; height: 32px;"></i>
+                                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Yükle</span>
+                            <?php endif; ?>
+                            <input type="file" id="photo" name="photo" hidden onchange="previewImage(this, 'photo-preview-wrap')" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                    </div>
+                    <!-- Kapak Fotoğrafı -->
+                    <div style="flex:1; min-width:200px;">
+                        <label style="margin-bottom:0.5rem; font-weight:700; font-size:0.9rem; color:#475569; display:block;">Kapak Fotoğrafı <span style="font-weight:400; color:#94a3b8;">(opsiyonel)</span></label>
+                        <div id="cover-preview-wrap" style="width:100%; height:90px; border:2px dashed #e2e8f0; border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer; background:#f8fafc; position:relative;" onclick="document.getElementById('cover_photo').click()">
+                            <?php if(!empty($profile['cover_photo'])): ?>
+                                <img src="<?php echo htmlspecialchars($profile['cover_photo']); ?>" style="width:100%;height:100%;object-fit:cover;">
+                            <?php else: ?>
+                                <div style="text-align:center; color:#94a3b8;">
+                                    <i data-lucide="image" style="width:24px;height:24px;"></i>
+                                    <p style="font-size:0.75rem; margin:0.25rem 0 0; font-weight:500;">Kapak ekle</p>
+                                </div>
+                            <?php endif; ?>
+                            <input type="file" id="cover_photo" name="cover_photo" hidden onchange="previewCover(this)" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                        <p style="margin-top:0.4rem; font-size:0.72rem; color:#94a3b8;">Kartvizitinizin üst bölümünde görünür. En iyi boyut: 1200×400 px</p>
                     </div>
                 </div>
 
@@ -246,6 +276,24 @@ $social_platform_values = array_column($social_platform_options, 'value');
                 <div class="form-group">
                     <label>Kısa Biyografi / Hakkında</label>
                     <textarea name="bio" class="form-control" rows="3" placeholder="Örn: 10 yıllık deneyime sahip dijital pazarlama uzmanı..."><?php echo htmlspecialchars($profile['bio']); ?></textarea>
+                </div>
+
+                <!-- Marka Rengi -->
+                <div class="form-group" style="display:flex; align-items:center; gap:1.5rem; padding:1.25rem 1.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px;">
+                    <div style="flex:1;">
+                        <label style="margin:0 0 0.2rem; display:block; font-weight:700; color:#475569; font-size:0.9rem;">Kişisel Marka Rengi</label>
+                        <p style="margin:0; font-size:0.78rem; color:#94a3b8; line-height:1.5;">Kartvizitinizin hero bölümü bu rengi kullanır. Boş bırakırsanız varsayılan lacivert kullanılır.</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <input type="color" id="brand_color" name="brand_color"
+                               value="<?php echo htmlspecialchars($resolved_brand_color); ?>"
+                               style="width:48px; height:48px; border:2px solid #e2e8f0; border-radius:10px; cursor:pointer; padding:4px; background:none;">
+                        <input type="text" id="brand_color_hex" maxlength="7"
+                               value="<?php echo htmlspecialchars($resolved_brand_color); ?>"
+                               placeholder="#0A2F2F"
+                               style="width:90px; padding:0.6rem 0.75rem; border:1px solid #e2e8f0; border-radius:10px; font-family:monospace; font-size:0.9rem; font-weight:600;"
+                               oninput="syncColorPicker(this)">
+                    </div>
                 </div>
 
                 <h3 style="font-weight: 800; font-size: 1.25rem; margin: 2.5rem 0 1.5rem; color: var(--navy-blue);">Sosyal Medya & Linkler</h3>
@@ -304,6 +352,30 @@ $social_platform_values = array_column($social_platform_options, 'value');
 
         const PROFILE_PLATFORM_OPTIONS = <?php echo json_encode($social_platform_options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
+        // Renk senkronizasyonu
+        const colorPicker = document.getElementById('brand_color');
+        const colorHex    = document.getElementById('brand_color_hex');
+        if (colorPicker && colorHex) {
+            colorPicker.addEventListener('input', () => { colorHex.value = colorPicker.value; });
+        }
+        function syncColorPicker(input) {
+            if (/^#[0-9a-fA-F]{6}$/.test(input.value) && colorPicker) {
+                colorPicker.value = input.value;
+            }
+        }
+
+        // Kapak fotoğrafı önizleme
+        function previewCover(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const wrap = document.getElementById('cover-preview-wrap');
+                    wrap.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function buildProfilePlatformOptions(selectedValue = 'instagram') {
             return PROFILE_PLATFORM_OPTIONS.map((option) => {
                 const selectedAttr = option.value === selectedValue ? 'selected' : '';
@@ -319,9 +391,7 @@ $social_platform_values = array_column($social_platform_options, 'value');
             const isCustom = selectEl.value === '__custom__';
             customInput.style.display = isCustom ? 'block' : 'none';
             customInput.disabled = !isCustom;
-            if (!isCustom) {
-                customInput.value = '';
-            }
+            if (!isCustom) { customInput.value = ''; }
         }
 
         function addSocialRow() {
@@ -339,22 +409,15 @@ $social_platform_values = array_column($social_platform_options, 'value');
             container.appendChild(row);
         }
 
-        function removeRow(btn) {
-            btn.parentElement.remove();
-        }
+        function removeRow(btn) { btn.parentElement.remove(); }
 
         function previewImage(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = document.querySelector('.image-upload img');
-                    if (!img) {
-                        img = document.createElement('img');
-                        document.querySelector('.image-upload').innerHTML = '';
-                        document.querySelector('.image-upload').appendChild(img);
-                    }
-                    img.src = e.target.result;
-                }
+                reader.onload = e => {
+                    let wrap = document.querySelector('.image-upload');
+                    wrap.innerHTML = `<img src="${e.target.result}" style="position:absolute;width:100%;height:100%;object-fit:cover;">`;
+                };
                 reader.readAsDataURL(input.files[0]);
             }
         }

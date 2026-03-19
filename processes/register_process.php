@@ -157,6 +157,51 @@ function normalize_theme_color(string $raw_color): string
     return '#0A2F2F';
 }
 
+function project_base_url_from_request(): string
+{
+    $env_app_url = trim((string)getenv('APP_URL'));
+    if ($env_app_url !== '') {
+        return rtrim($env_app_url, '/');
+    }
+
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    $scheme = $is_https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+    $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/processes/register_process.php');
+    $project_path = preg_replace('#/processes/[^/]+$#', '', $script_name);
+
+    return $scheme . '://' . $host . rtrim((string)$project_path, '/');
+}
+
+function build_dynamic_qr_url(string $target_url): string
+{
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=700x700&ecc=M&data=' . rawurlencode($target_url);
+}
+
+function resolve_package_price(PDO $pdo, string $package): float
+{
+    $fallback_map = [
+        'classic' => 299.00,
+        'panel' => 199.00,
+        'smart' => 499.00,
+    ];
+
+    if (!table_exists($pdo, 'packages') || !table_has_column($pdo, 'packages', 'slug') || !table_has_column($pdo, 'packages', 'price')) {
+        return $fallback_map[$package] ?? 0.0;
+    }
+
+    $stmt = $pdo->prepare("SELECT price FROM packages WHERE slug = ? LIMIT 1");
+    $stmt->execute([$package]);
+    $price = $stmt->fetchColumn();
+
+    if ($price === false) {
+        return $fallback_map[$package] ?? 0.0;
+    }
+
+    return (float)$price;
+}
+
 function normalize_social_url(string $platform, string $raw_url): ?string
 {
     $url = trim($raw_url);
@@ -414,9 +459,17 @@ try {
         $order_columns[] = 'revision_count';
         $order_values[] = $revision_count;
     }
+    if (table_has_column($pdo, 'orders', 'current_revision_count')) {
+        $order_columns[] = 'current_revision_count';
+        $order_values[] = 0;
+    }
+    if (table_has_column($pdo, 'orders', 'total_allowed_revisions')) {
+        $order_columns[] = 'total_allowed_revisions';
+        $order_values[] = $revision_count;
+    }
     if (table_has_column($pdo, 'orders', 'status')) {
         $order_columns[] = 'status';
-        $order_values[] = 'pending';
+        $order_values[] = $package === 'panel' ? 'completed' : 'pending';
     }
 
     $order_columns_sql = implode(', ', array_map(static fn(string $col): string => "`{$col}`", $order_columns));
@@ -425,7 +478,66 @@ try {
     $stmt->execute($order_values);
     $order_id = (int)$pdo->lastInsertId();
 
+    if (table_exists($pdo, 'payments')) {
+        $package_price = resolve_package_price($pdo, $package);
+        $payment_columns = [];
+        $payment_values = [];
+
+        if (table_has_column($pdo, 'payments', 'user_id')) {
+            $payment_columns[] = 'user_id';
+            $payment_values[] = $user_id;
+        }
+        if (table_has_column($pdo, 'payments', 'order_id')) {
+            $payment_columns[] = 'order_id';
+            $payment_values[] = $order_id;
+        }
+        if (table_has_column($pdo, 'payments', 'transaction_id')) {
+            $payment_columns[] = 'transaction_id';
+            $payment_values[] = 'ORD-' . date('YmdHis') . '-' . $order_id . '-' . random_int(1000, 9999);
+        }
+        if (table_has_column($pdo, 'payments', 'amount')) {
+            $payment_columns[] = 'amount';
+            $payment_values[] = $package_price;
+        }
+        if (table_has_column($pdo, 'payments', 'currency')) {
+            $payment_columns[] = 'currency';
+            $payment_values[] = 'TRY';
+        }
+        if (table_has_column($pdo, 'payments', 'type')) {
+            $payment_columns[] = 'type';
+            $payment_values[] = 'order';
+        }
+        if (table_has_column($pdo, 'payments', 'payment_type')) {
+            $payment_columns[] = 'payment_type';
+            $payment_values[] = 'order';
+        }
+        if (table_has_column($pdo, 'payments', 'status')) {
+            $payment_columns[] = 'status';
+            $payment_values[] = 'success';
+        }
+        if (table_has_column($pdo, 'payments', 'payment_details')) {
+            $payment_columns[] = 'payment_details';
+            $payment_values[] = json_encode(
+                [
+                    'source' => 'register',
+                    'package' => $package,
+                    'digital_profile_active' => $is_digital_profile_active,
+                ],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        }
+
+        if (!empty($payment_columns)) {
+            $payment_columns_sql = implode(', ', array_map(static fn(string $col): string => "`{$col}`", $payment_columns));
+            $payment_placeholders = implode(', ', array_fill(0, count($payment_values), '?'));
+            $stmt_payment = $pdo->prepare("INSERT INTO payments ({$payment_columns_sql}) VALUES ({$payment_placeholders})");
+            $stmt_payment->execute($payment_values);
+        }
+    }
+
     $slug = generate_unique_profile_slug($pdo, $panel_display_name !== '' ? $panel_display_name : $name);
+    $public_profile_url = project_base_url_from_request() . '/kartvizit.php?slug=' . rawurlencode($slug);
+    $dynamic_qr_url = build_dynamic_qr_url($public_profile_url);
 
     $profile_columns = ['user_id', 'slug'];
     $profile_values = [$user_id, $slug];
@@ -463,6 +575,14 @@ try {
     if (table_has_column($pdo, 'profiles', 'theme_color')) {
         $profile_columns[] = 'theme_color';
         $profile_values[] = $theme_color;
+    }
+    if (table_has_column($pdo, 'profiles', 'brand_color')) {
+        $profile_columns[] = 'brand_color';
+        $profile_values[] = $theme_color;
+    }
+    if (table_has_column($pdo, 'profiles', 'qr_path') && $is_digital_profile_active) {
+        $profile_columns[] = 'qr_path';
+        $profile_values[] = $dynamic_qr_url;
     }
     if (table_has_column($pdo, 'profiles', 'is_active')) {
         $profile_columns[] = 'is_active';

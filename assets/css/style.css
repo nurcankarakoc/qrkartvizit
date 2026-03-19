@@ -83,7 +83,6 @@ body { font-family: var(--font-main); color: var(--text-dark); background: var(-
     min-height: 75vh; 
     display: flex; 
     align-items: center; 
-    overflow: hidden;
 }
 
 /* Hero background glow blobs for premium look */
@@ -585,32 +584,21 @@ body { font-family: var(--font-main); color: var(--text-dark); background: var(-
 .v-card-info-l { font-size: 0.85rem; color: #64748b; line-height: 1.6; font-weight: 500; }
 .v-card-qr-l { position: absolute; right: 2.2rem; bottom: 2.2rem; width: 50px; height: 50px; background: #fff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.75rem; border-radius: 10px; color: var(--gold); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
-/* HERO WAVE - Smoother Transition */
-/* HERO WAVE - Premium Transition */
-.hero-wave { 
-    position: absolute; 
-    bottom: -5px; /* Slight overlap to prevent gaps */
-    left: 0; 
-    width: 100%; 
-    overflow: hidden; 
-    line-height: 0; 
+/* HERO WAVE */
+.hero-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    line-height: 0;
     z-index: 20;
     pointer-events: none;
 }
 
-.hero-wave svg { 
-    position: relative; 
-    display: block; 
-    width: calc(120% + 1.3px); 
-    height: 100px; 
-    transform: translateX(-5%);
-}
-
-.hero-wave .wave-layer-1 { fill: #ffffff; }
-
-@keyframes waveGlide {
-    0%, 100% { transform: translateX(0) scaleY(1); }
-    50% { transform: translateX(-2%) scaleY(1.05); }
+.hero-wave svg {
+    display: block;
+    width: 100%;
+    height: 50px;
 }
 
 /* STATS */
@@ -1001,3 +989,89 @@ img {
         box-shadow: none !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL: SAYFA GEÇİŞ OVERLAY (tüm sayfalar)
+═══════════════════════════════════════════════════════ */
+#zs-page-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: linear-gradient(135deg, #0A2F2F 0%, #072424 60%, #0A2F2F 100%);
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: opacity 0.22s ease, transform 0s 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#zs-page-overlay.zs-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+    transition: opacity 0.22s ease, transform 0s 0s;
+}
+
+.zs-overlay-logo {
+    animation: zsLogoPulse 0.6s ease infinite alternate;
+    opacity: 0;
+    transition: opacity 0.15s 0.1s;
+}
+
+#zs-page-overlay.zs-active .zs-overlay-logo {
+    opacity: 1;
+}
+
+@keyframes zsLogoPulse {
+    from { transform: scale(0.95); opacity: 0.7; }
+    to   { transform: scale(1.05); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL: ORTAK YARDIMCI STİLLER
+═══════════════════════════════════════════════════════ */
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--text-dark, #1e293b);
+    text-align: center;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.5px;
+}
+
+.section-desc {
+    text-align: center;
+    color: var(--text-muted, #64748b);
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+/* Testimonials */
+.testimonial-item { display: none; }
+.testimonial-item.active { display: block; }
+.testimonial-card {
+    padding: 3rem;
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.06);
+    border: 1px solid #f1f5f9;
+    max-width: 780px;
+    margin: 0 auto 2rem;
+}
+.quote-icon { color: var(--gold, #A6803F); margin-bottom: 1.5rem; }
+.quote-icon i { width: 32px; height: 32px; }
+.testimonial-content p { font-size: 1.1rem; color: #334155; line-height: 1.8; font-style: italic; }
+.testimonial-user { display: flex; align-items: center; gap: 1rem; margin-top: 2rem; }
+.user-img { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; background: #f1f5f9; }
+.user-img img { width: 100%; height: 100%; object-fit: cover; }
+.user-info h5 { font-size: 1rem; font-weight: 800; color: #1e293b; }
+.user-info span { font-size: 0.85rem; color: #64748b; }
+.slider-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; }
+.dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #e2e8f0; cursor: pointer;
+    transition: all 0.3s; border: none; padding: 0;
+}
+.dot.active { background: var(--gold, #A6803F); transform: scale(1.3); }

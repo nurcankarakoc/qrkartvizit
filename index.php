@@ -145,10 +145,13 @@
             </div><!-- End hero-visual-block -->
         </div><!-- End container grid-2 -->
 
-        <!-- Hero Wave - Corner-to-Corner Soft Transition -->
+    </section>
+
+        <!-- Dalga geçişi -->
         <div class="hero-wave">
-            <svg viewBox="0 0 1440 100" preserveAspectRatio="none">
-                <path class="wave-layer-1" d="M0,100 L600,100 C900,100 1200,95 1440,70 L1440,100 L0,100 Z"></path>
+            <svg viewBox="0 0 1440 50" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill="rgba(166,128,63,0.15)" d="M0,50 C360,32 720,18 1080,28 C1260,34 1380,26 1440,20 L1440,50 Z"/>
+                <path fill="#ffffff" d="M0,50 C280,36 580,22 840,30 C1100,38 1300,32 1440,24 L1440,50 Z"/>
             </svg>
         </div>
     </section>
@@ -372,6 +375,7 @@
     </footer>
 
     <script src="assets/js/main.js"></script>
+    <script src="assets/js/transitions.js"></script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

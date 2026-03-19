@@ -241,6 +241,7 @@ ensure_session_started();
     </div>
 
     <script src="../assets/js/mobile-form.js"></script>
+    <script src="../assets/js/transitions.js"></script>
     <script>
         lucide.createIcons();
     </script>
