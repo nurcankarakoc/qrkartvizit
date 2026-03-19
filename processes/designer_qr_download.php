@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {
 $order_id = (int)($_GET['order_id'] ?? 0);
 if ($order_id <= 0) {
     http_response_code(400);
-    exit('Gecersiz siparis.');
+    exit('Geçersiz sipariş.');
 }
 
 function has_digital_profile_package(?string $package): bool
@@ -87,18 +87,18 @@ $row = $stmt->fetch();
 
 if (!$row) {
     http_response_code(404);
-    exit('Siparis bulunamadi.');
+    exit('Sipariş bulunamadı.');
 }
 
 if (!has_digital_profile_package((string)($row['package'] ?? ''))) {
     http_response_code(400);
-    exit('Bu siparis dijital profil paketi icermiyor.');
+    exit('Bu sipariş dijital profil paketi içermiyor.');
 }
 
 $profile_slug = trim((string)($row['slug'] ?? ''));
 if ($profile_slug === '') {
     http_response_code(404);
-    exit('Profil slug bulunamadi.');
+    exit('Profil slug bulunamadı.');
 }
 
 $qr_path = trim((string)($row['qr_path'] ?? ''));

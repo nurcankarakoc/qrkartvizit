@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once '../core/db.php';
 require_once '../core/security.php';
 ensure_session_started();
@@ -1300,6 +1300,7 @@ if (!is_array($register_social_customs)) {
         applyInitialStepState();
         updateDigitalPanelUI();
     </script>
+    
 </body>
 </html>
 

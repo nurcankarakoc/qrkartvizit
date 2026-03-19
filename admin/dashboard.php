@@ -148,7 +148,7 @@ $pending_disputes = $stmt_disputes->fetchAll();
 
             <div class="content-wrapper">
                 <div class="stats-grid-dashboard">
-                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); color: #fff;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); color: #fff; border: none;">
                         <div class="stat-info">
                             <span class="label" style="color: rgba(255,255,255,0.8);">Toplam Ciro</span>
                             <span class="value" style="color: #fff;"><?php echo number_format($total_revenue, 2, ',', '.'); ?> TL</span>
@@ -268,6 +268,7 @@ $pending_disputes = $stmt_disputes->fetchAll();
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>lucide.createIcons();</script>
 </body>
 </html>

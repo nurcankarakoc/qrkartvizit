@@ -260,8 +260,10 @@ $error_message = $error_messages[$error_key] ?? '';
 
     <script src="../assets/js/dashboard-mobile.js"></script>
     <script src="../assets/js/mobile-form.js"></script>
+    
     <script>
         lucide.createIcons();
     </script>
+    
 </body>
 </html>

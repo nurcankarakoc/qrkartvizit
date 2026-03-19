@@ -138,9 +138,17 @@ if (!empty($profile['brand_color']) && preg_match('/^#[0-9a-fA-F]{6}$/', (string
 
         body { background: var(--content-bg); display: flex; min-height: 100vh; }
 
-        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 3rem; }
+        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 4rem; }
 
-        .card { background: #fff; border-radius: 20px; padding: 2.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 24px; 
+            padding: 2.5rem; 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: 0 10px 40px rgba(10, 47, 47, 0.03); 
+        }
 
         .form-group { margin-bottom: 1.5rem; }
         .form-group label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; }
@@ -347,6 +355,7 @@ if (!empty($profile['brand_color']) && preg_match('/^#[0-9a-fA-F]{6}$/', (string
 
     <script src="../assets/js/dashboard-mobile.js"></script>
     <script src="../assets/js/mobile-form.js"></script>
+    
     <script>
         lucide.createIcons();
 

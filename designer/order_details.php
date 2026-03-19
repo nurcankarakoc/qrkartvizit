@@ -149,9 +149,25 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .order-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; }
-        .card-details { background: #fff; padding: 2.5rem; border-radius: 24px; box-shadow: var(--card-shadow); }
+        .card-details { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 2.5rem; 
+            border-radius: 24px; 
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px rgba(10, 47, 47, 0.03); 
+        }
         .card-sidebar-info { display: flex; flex-direction: column; gap: 2rem; }
-        .info-box { background: #fff; padding: 2rem; border-radius: 24px; box-shadow: var(--card-shadow); }
+        .info-box { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 2rem; 
+            border-radius: 24px; 
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px rgba(10, 47, 47, 0.03); 
+        }
         .info-box h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
         .info-box h3 i { color: var(--gold); width: 20px; }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.95rem; }
@@ -205,7 +221,7 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarimlarim</a></li>
+                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
                     <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
@@ -257,13 +273,16 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
                                 <div class="qr-area">
                                     <?php if ($resolved_qr_asset !== ''): ?>
                                         <img src="<?php echo htmlspecialchars($resolved_qr_asset); ?>" alt="QR Code">
-                                        <a href="../processes/designer_qr_download.php?order_id=<?php echo (int)$order_id; ?>"><i data-lucide="download"></i> QR Indir</a>
+                                        <a href="../processes/designer_qr_download.php?order_id=<?php echo (int)$order_id; ?>"><i data-lucide="download"></i> QR İndir</a>
                                     <?php elseif ($public_profile_url !== ''): ?>
                                         <div style="padding: 1.5rem 1rem; color: #334155;">
                                             <i data-lucide="link-2" style="margin-bottom: 0.5rem;"></i>
                                             <p style="margin: 0 0 0.5rem; font-weight: 700;">QR gorseli henuz yuklenmedi.</p>
                                             <a href="<?php echo htmlspecialchars($public_profile_url); ?>" target="_blank" rel="noopener" style="word-break: break-all; font-size: 0.85rem;">
                                                 <?php echo htmlspecialchars($public_profile_url); ?>
+                                            </a>
+                                            <a href="../processes/designer_qr_download.php?order_id=<?php echo (int)$order_id; ?>" style="margin-top:0.7rem; display:inline-flex; align-items:center; gap:0.35rem; font-size:0.84rem; font-weight:700;">
+                                                <i data-lucide="download"></i> QR İndir
                                             </a>
                                         </div>
                                     <?php else: ?>
@@ -310,6 +329,7 @@ $upload_error_message = $upload_error_messages[$upload_error_key] ?? '';
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>
         lucide.createIcons();
         document.getElementById('draftFile').addEventListener('change', function(e) {

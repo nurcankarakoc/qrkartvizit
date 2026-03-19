@@ -166,6 +166,7 @@ $flash = $message_map[$message_key] ?? null;
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>lucide.createIcons();</script>
 </body>
 </html>

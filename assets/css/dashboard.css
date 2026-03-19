@@ -19,6 +19,50 @@
     --card-shadow: 0 10px 25px rgba(0,0,0,0.05);
 }
 
+/* GLOBAL PANEL COMPONENTS */
+.stat-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(10, 47, 47, 0.04);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(10, 47, 47, 0.08);
+}
+
+.table-container {
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(10, 47, 47, 0.03);
+    margin-bottom: 2rem;
+}
+
+.data-table {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.data-table tr {
+    transition: background 0.3s;
+}
+
+.data-table tr:hover td {
+    background: rgba(166, 128, 63, 0.03);
+}
+
 .dashboard-body {
     background-color: var(--content-bg);
     min-height: 100dvh;
@@ -88,13 +132,14 @@
 
 .sidebar-nav ul li.active a,
 .sidebar-nav ul li a:hover {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: #fff;
 }
 
 .sidebar-nav ul li.active a {
     color: #fff;
-    background: var(--primary);
+    background: var(--gold);
+    box-shadow: 0 4px 15px rgba(166, 128, 63, 0.2);
 }
 
 .sidebar-footer {

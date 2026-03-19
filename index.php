@@ -340,7 +340,7 @@
     <!-- FOOTER CTA -->
     <section class="footer-cta">
         <div class="container container-box">
-            <h2>Dijital Kartvizitinizi <span class="cyan">Hemen Oluşturun</span></h2>
+            <h2>Dijital Kartvizitinizi <span class="gold-text">Hemen Oluşturun</span></h2>
             <p>Onbinlerce profesyonelin tercihi olan Zerosoft QR sistemiyle tanışın.</p>
             <a href="auth/register.php" class="btn-main">
                 Şimdi Başvur <i data-lucide="arrow-right"></i>
@@ -375,7 +375,7 @@
     </footer>
 
     <script src="assets/js/main.js"></script>
-    <script src="assets/js/transitions.js"></script>
+    
     <script>lucide.createIcons();</script>
 </body>
 </html>

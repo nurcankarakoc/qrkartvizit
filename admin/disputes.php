@@ -152,6 +152,7 @@ $flash = $message_map[$message_key] ?? null;
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>
         lucide.createIcons();
         document.querySelectorAll('.resolution-area').forEach((area) => {

@@ -66,7 +66,7 @@ $completed_orders = $stmt_completed->fetchAll();
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarimlarim</a></li>
+                    <li><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
                     <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
@@ -134,7 +134,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     <section class="table-container">
                         <div class="table-header">
                             <h2>Yeni Sipariş Havuzu</h2>
-                            <a href="designs.php?filter=pending" class="view-all">Tumunu Gor</a>
+                            <a href="designs.php?filter=pending" class="view-all">Tümünü Gör</a>
                         </div>
                         <table class="data-table">
                             <thead>
@@ -173,7 +173,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     <section class="table-container">
                         <div class="table-header">
                             <h2>Üzerimdeki İşler</h2>
-                            <a href="designs.php" class="view-all">Tumunu Gor</a>
+                            <a href="designs.php" class="view-all">Tümünü Gör</a>
                         </div>
                         <table class="data-table">
                             <thead>
@@ -222,6 +222,7 @@ $completed_orders = $stmt_completed->fetchAll();
     </style>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>
         lucide.createIcons();
     </script>

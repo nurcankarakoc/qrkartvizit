@@ -163,11 +163,19 @@ if ($is_digital_profile_active_for_package && $profile_slug !== '') {
         }
 
         .card {
-            background: #fff;
-            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
             padding: 2rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.06);
-            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(10, 47, 47, 0.04);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(10, 47, 47, 0.08);
         }
 
         .status-badge {
@@ -445,6 +453,7 @@ if ($is_digital_profile_active_for_package && $profile_slug !== '') {
     </main>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>
         lucide.createIcons();
     </script>

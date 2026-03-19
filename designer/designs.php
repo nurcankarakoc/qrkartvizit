@@ -39,8 +39,8 @@ $count_all = array_sum(array_map('intval', $count_rows));
 function status_label(string $status): string
 {
     return match ($status) {
-        'approved' => 'Onaylandi',
-        'revision_requested' => 'Revize Istendi',
+        'approved' => 'Onaylandı',
+        'revision_requested' => 'Revize İstendi',
         'rejected' => 'Reddedildi',
         default => 'Beklemede',
     };
@@ -61,7 +61,7 @@ function status_chip_class(string $status): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tasarimlarim - Zerosoft</title>
+    <title>Tasarımlarım - Zerosoft</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -73,7 +73,19 @@ function status_chip_class(string $status): string
         .filter-link { text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700; }
         .filter-link.active { background: var(--navy-blue); color: #fff; border-color: var(--navy-blue); }
         .design-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-        .design-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: var(--card-shadow); display: flex; flex-direction: column; }
+        .design-card { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px); 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            border-radius: 20px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(10, 47, 47, 0.04); 
+            display: flex; 
+            flex-direction: column; 
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .design-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(10, 47, 47, 0.08); }
         .design-preview { height: 180px; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #e2e8f0; }
         .design-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .design-meta { padding: 0.9rem; display: grid; gap: 0.5rem; }
@@ -102,7 +114,7 @@ function status_chip_class(string $status): string
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li class="active"><a href="designs.php"><i data-lucide="image"></i> Tasarimlarim</a></li>
+                    <li class="active"><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
                     <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
@@ -112,7 +124,7 @@ function status_chip_class(string $status): string
                     <div class="avatar"><?php echo strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)); ?></div>
                     <div class="details">
                         <span class="name"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></span>
-                        <span class="role">Tasarimci</span>
+                        <span class="role">Tasarımcı</span>
                     </div>
                 </div>
                 <a href="../processes/logout.php" class="logout-btn"><i data-lucide="log-out"></i></a>
@@ -122,8 +134,8 @@ function status_chip_class(string $status): string
         <main class="main-content">
             <header class="top-bar">
                 <div>
-                    <h1 style="margin:0;">Tasarimlarim</h1>
-                    <p style="margin:0.35rem 0 0; color:#64748b;">Yuklediginiz tum taslaklar bu ekranda listelenir.</p>
+                    <h1 style="margin:0;">Tasarımlarım</h1>
+                    <p style="margin:0.35rem 0 0; color:#64748b;">Yüklediğiniz tüm taslaklar bu ekranda listelenir.</p>
                 </div>
                 <div class="date-badge" style="background:#fff; border:1px solid #e2e8f0; padding:0.5rem 0.8rem; border-radius:10px; font-weight:700;">
                     Toplam: <?php echo (int)$count_all; ?>
@@ -131,7 +143,7 @@ function status_chip_class(string $status): string
             </header>
 
             <div class="filter-row">
-                <a href="designs.php?filter=all" class="filter-link <?php echo $filter === 'all' ? 'active' : ''; ?>">Tumu (<?php echo (int)$count_all; ?>)</a>
+                <a href="designs.php?filter=all" class="filter-link <?php echo $filter === 'all' ? 'active' : ''; ?>">Tümü (<?php echo (int)$count_all; ?>)</a>
                 <a href="designs.php?filter=pending" class="filter-link <?php echo $filter === 'pending' ? 'active' : ''; ?>">Beklemede (<?php echo (int)($count_rows['pending'] ?? 0); ?>)</a>
                 <a href="designs.php?filter=approved" class="filter-link <?php echo $filter === 'approved' ? 'active' : ''; ?>">Onaylanan (<?php echo (int)($count_rows['approved'] ?? 0); ?>)</a>
                 <a href="designs.php?filter=revision_requested" class="filter-link <?php echo $filter === 'revision_requested' ? 'active' : ''; ?>">Revize (<?php echo (int)($count_rows['revision_requested'] ?? 0); ?>)</a>
@@ -139,7 +151,7 @@ function status_chip_class(string $status): string
 
             <?php if (empty($drafts)): ?>
                 <div class="table-container">
-                    <div class="empty-state">Bu filtrede goruntulenecek tasarim bulunmuyor.</div>
+                    <div class="empty-state">Bu filtrede görüntülenecek tasarım bulunmuyor.</div>
                 </div>
             <?php else: ?>
                 <div class="design-grid">
@@ -158,22 +170,22 @@ function status_chip_class(string $status): string
                                 <?php else: ?>
                                     <div style="text-align:center; color:#64748b;">
                                         <i data-lucide="file-text" style="width:38px; height:38px;"></i>
-                                        <p style="margin:0.4rem 0 0; font-size:0.82rem; font-weight:700;">Dosya Onizleme</p>
+                                        <p style="margin:0.4rem 0 0; font-size:0.82rem; font-weight:700;">Dosya Önizleme</p>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             <div class="design-meta">
                                 <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                    <strong>Siparis #<?php echo (int)$draft['order_id']; ?></strong>
+                                    <strong>Sipariş #<?php echo (int)$draft['order_id']; ?></strong>
                                     <span class="chip <?php echo status_chip_class($status); ?>"><?php echo htmlspecialchars(status_label($status)); ?></span>
                                 </div>
-                                <div style="font-size:0.85rem; color:#64748b;">Musteri: <?php echo htmlspecialchars((string)$draft['customer_name']); ?></div>
+                                <div style="font-size:0.85rem; color:#64748b;">Müşteri: <?php echo htmlspecialchars((string)$draft['customer_name']); ?></div>
                                 <div style="font-size:0.82rem; color:#64748b;">Paket: <?php echo htmlspecialchars((string)($draft['package'] ?? 'classic')); ?> | Tarih: <?php echo date('d.m.Y H:i', strtotime((string)$draft['created_at'])); ?></div>
                                 <div class="design-actions">
-                                    <a href="order_details.php?id=<?php echo (int)$draft['order_id']; ?>" class="mini-btn primary"><i data-lucide="eye"></i> Siparise Git</a>
+                                    <a href="order_details.php?id=<?php echo (int)$draft['order_id']; ?>" class="mini-btn primary"><i data-lucide="eye"></i> Siparişe Git</a>
                                     <?php if ($file_path !== ''): ?>
-                                        <a href="<?php echo htmlspecialchars($asset_href); ?>" target="_blank" rel="noopener" class="mini-btn"><i data-lucide="external-link"></i> Ac</a>
-                                        <a href="<?php echo htmlspecialchars($asset_href); ?>" download class="mini-btn"><i data-lucide="download"></i> Indir</a>
+                                        <a href="<?php echo htmlspecialchars($asset_href); ?>" target="_blank" rel="noopener" class="mini-btn"><i data-lucide="external-link"></i> Aç</a>
+                                        <a href="<?php echo htmlspecialchars($asset_href); ?>" download class="mini-btn"><i data-lucide="download"></i> İndir</a>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -185,6 +197,7 @@ function status_chip_class(string $status): string
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>lucide.createIcons();</script>
 </body>
 </html>

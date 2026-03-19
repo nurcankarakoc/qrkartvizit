@@ -136,6 +136,7 @@ $designers = $stmt_designers->fetchAll();
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
+    
     <script>lucide.createIcons();</script>
 </body>
 </html>
