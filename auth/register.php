@@ -15,6 +15,11 @@ $register_error_map = [
     'logo_invalid_type' => 'Logo için sadece JPG, PNG veya WEBP dosyası kabul edilir.',
     'logo_dir_failed' => 'Yükleme klasörü oluşturulamadı. Lütfen daha sonra tekrar deneyin.',
     'logo_move_failed' => 'Logo dosyası kaydedilemedi. Farklı bir dosya ile tekrar deneyin.',
+    'profile_photo_upload_error' => 'Profil fotoğrafı yüklenirken bir hata oluştu. Lütfen dosyayı tekrar seçin.',
+    'profile_photo_too_large' => 'Profil fotoğrafı en fazla 5 MB olabilir.',
+    'profile_photo_invalid_type' => 'Profil fotoğrafı için sadece JPG, PNG veya WEBP dosyası kabul edilir.',
+    'profile_photo_dir_failed' => 'Profil fotoğrafı klasörü oluşturulamadı. Lütfen daha sonra tekrar deneyin.',
+    'profile_photo_move_failed' => 'Profil fotoğrafı kaydedilemedi. Farklı bir dosya ile tekrar deneyin.',
     'register_failed' => 'Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
 ];
 $register_error_message = $register_error_map[$register_error_key] ?? '';
@@ -404,6 +409,93 @@ if (!is_array($register_social_customs)) {
             background: rgba(166, 128, 63, 0.02);
         }
 
+        .file-upload-box.dragover {
+            border-color: var(--gold);
+            background: rgba(166, 128, 63, 0.08);
+        }
+
+        .file-upload-box.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .file-upload-box.compact {
+            padding: 1.25rem;
+        }
+
+        .file-upload-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            margin-top: 0.85rem;
+            flex-wrap: wrap;
+        }
+
+        .file-action-btn {
+            border: none;
+            background: var(--navy-blue);
+            color: #fff;
+            border-radius: 10px;
+            padding: 0.5rem 0.85rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .file-action-btn.secondary {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .file-action-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .file-preview-thumb {
+            width: 76px;
+            height: 76px;
+            border-radius: 10px;
+            object-fit: cover;
+            margin: 0.55rem auto 0;
+            border: 1px solid #cbd5e1;
+            display: block;
+            background: #fff;
+        }
+
+        .input-help-text {
+            margin-top: 0.45rem;
+            color: #64748b;
+            font-size: 0.76rem;
+            line-height: 1.4;
+        }
+
+        .theme-color-row {
+            display: grid;
+            grid-template-columns: 1fr 165px;
+            gap: 0.75rem;
+        }
+
+        .theme-color-preview {
+            margin-top: 0.6rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .theme-color-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #0A2F2F;
+        }
+
         .panel-config-box {
             border: 1px solid #e2e8f0;
             border-radius: 14px;
@@ -600,6 +692,25 @@ if (!is_array($register_social_customs)) {
             line-height: 1.55;
         }
 
+        .file-preview-modal-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            max-height: 60vh;
+            overflow: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+
+        .file-preview-modal-body img {
+            max-width: 100%;
+            max-height: 56vh;
+            object-fit: contain;
+            display: block;
+        }
+
         .step-actions {
             display: flex;
             gap: 1rem;
@@ -692,6 +803,8 @@ if (!is_array($register_social_customs)) {
             .panel-config-grid { grid-template-columns: 1fr; }
             .panel-social-row { grid-template-columns: 1fr; }
             .panel-social-actions { flex-direction: column; align-items: flex-start; }
+            .theme-color-row { grid-template-columns: 1fr; }
+            .file-upload-actions { justify-content: flex-start; }
             .stepper { margin-bottom: 2rem; }
             .step-label { display: none; }
         }
@@ -875,11 +988,17 @@ if (!is_array($register_social_customs)) {
 
                         <div class="form-group">
                             <label>Kurumsal Logo (Varsa)</label>
-                            <div class="file-upload-box" onclick="document.getElementById('logo-file').click()">
+                            <div class="file-upload-box" id="logo-dropzone" onclick="triggerFileInput('logo-file')">
                                 <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: #94a3b8; margin-bottom: 0.5rem;"></i>
                                 <p id="file-name">Logo dosyasını sürükleyin veya seçin</p>
-                                <input type="file" name="logo" id="logo-file" hidden onchange="updateFileName(this)">
+                                <img id="logo-preview-thumb" class="file-preview-thumb" alt="Logo önizleme" hidden>
+                                <div class="file-upload-actions">
+                                    <button type="button" class="file-action-btn secondary" id="logo-preview-btn" onclick="event.stopPropagation(); previewSelectedImage('logo-file');" disabled>Görüntüle</button>
+                                    <button type="button" class="file-action-btn" onclick="event.stopPropagation(); triggerFileInput('logo-file')">Dosya Seç</button>
+                                </div>
+                                <input type="file" name="logo" id="logo-file" hidden accept="image/jpeg,image/png,image/webp" onchange="handleSelectedFile('logo-file', 'file-name', 'logo-preview-btn', 'logo-preview-thumb', 'Logo dosyasını sürükleyin veya seçin')">
                             </div>
+                            <p class="input-help-text">JPG, PNG veya WEBP, maksimum 5 MB.</p>
                         </div>
 
                         <div class="form-group">
@@ -907,28 +1026,50 @@ if (!is_array($register_social_customs)) {
                                     </div>
                                     <div class="form-group">
                                         <label>Panel Tema Rengi</label>
-                                        <select name="theme_color" id="theme-color" class="form-control">
-                                            <option value="#0A2F2F" <?php echo register_old('theme_color', '#0A2F2F') === '#0A2F2F' ? 'selected' : ''; ?>>Gece Lacivert</option>
-                                            <option value="#065F46" <?php echo register_old('theme_color') === '#065F46' ? 'selected' : ''; ?>>Zümrüt</option>
-                                            <option value="#0F766E" <?php echo register_old('theme_color') === '#0F766E' ? 'selected' : ''; ?>>Turkuaz</option>
-                                            <option value="#0EA5E9" <?php echo register_old('theme_color') === '#0EA5E9' ? 'selected' : ''; ?>>Açık Mavi</option>
-                                            <option value="#1D4ED8" <?php echo register_old('theme_color') === '#1D4ED8' ? 'selected' : ''; ?>>Mavi</option>
-                                            <option value="#2563EB" <?php echo register_old('theme_color') === '#2563EB' ? 'selected' : ''; ?>>Kraliyet Mavi</option>
-                                            <option value="#4F46E5" <?php echo register_old('theme_color') === '#4F46E5' ? 'selected' : ''; ?>>İndigo</option>
-                                            <option value="#7C3AED" <?php echo register_old('theme_color') === '#7C3AED' ? 'selected' : ''; ?>>Mor</option>
-                                            <option value="#9333EA" <?php echo register_old('theme_color') === '#9333EA' ? 'selected' : ''; ?>>Viyole</option>
-                                            <option value="#C026D3" <?php echo register_old('theme_color') === '#C026D3' ? 'selected' : ''; ?>>Fuşya</option>
-                                            <option value="#DB2777" <?php echo register_old('theme_color') === '#DB2777' ? 'selected' : ''; ?>>Pembe</option>
-                                            <option value="#BE123C" <?php echo register_old('theme_color') === '#BE123C' ? 'selected' : ''; ?>>Kırmızı</option>
-                                            <option value="#EA580C" <?php echo register_old('theme_color') === '#EA580C' ? 'selected' : ''; ?>>Turuncu</option>
-                                            <option value="#CA8A04" <?php echo register_old('theme_color') === '#CA8A04' ? 'selected' : ''; ?>>Amber</option>
-                                            <option value="#15803D" <?php echo register_old('theme_color') === '#15803D' ? 'selected' : ''; ?>>Orman Yeşili</option>
-                                            <option value="#0F172A" <?php echo register_old('theme_color') === '#0F172A' ? 'selected' : ''; ?>>Gece Siyahı</option>
-                                            <option value="#334155" <?php echo register_old('theme_color') === '#334155' ? 'selected' : ''; ?>>Antrasit</option>
-                                            <option value="#4B5563" <?php echo register_old('theme_color') === '#4B5563' ? 'selected' : ''; ?>>Gri</option>
-                                            <option value="#FFFFFF" <?php echo register_old('theme_color') === '#FFFFFF' ? 'selected' : ''; ?>>Beyaz</option>
-                                        </select>
+                                        <div class="theme-color-row">
+                                            <select name="theme_color" id="theme-color" class="form-control" onchange="syncThemeColorFromSelect(this)">
+                                                <option value="#0A2F2F" <?php echo register_old('theme_color', '#0A2F2F') === '#0A2F2F' ? 'selected' : ''; ?>>Gece Lacivert</option>
+                                                <option value="#065F46" <?php echo register_old('theme_color') === '#065F46' ? 'selected' : ''; ?>>Zümrüt</option>
+                                                <option value="#0F766E" <?php echo register_old('theme_color') === '#0F766E' ? 'selected' : ''; ?>>Turkuaz</option>
+                                                <option value="#0EA5E9" <?php echo register_old('theme_color') === '#0EA5E9' ? 'selected' : ''; ?>>Açık Mavi</option>
+                                                <option value="#1D4ED8" <?php echo register_old('theme_color') === '#1D4ED8' ? 'selected' : ''; ?>>Mavi</option>
+                                                <option value="#2563EB" <?php echo register_old('theme_color') === '#2563EB' ? 'selected' : ''; ?>>Kraliyet Mavi</option>
+                                                <option value="#4F46E5" <?php echo register_old('theme_color') === '#4F46E5' ? 'selected' : ''; ?>>İndigo</option>
+                                                <option value="#7C3AED" <?php echo register_old('theme_color') === '#7C3AED' ? 'selected' : ''; ?>>Mor</option>
+                                                <option value="#9333EA" <?php echo register_old('theme_color') === '#9333EA' ? 'selected' : ''; ?>>Viyole</option>
+                                                <option value="#C026D3" <?php echo register_old('theme_color') === '#C026D3' ? 'selected' : ''; ?>>Fuşya</option>
+                                                <option value="#DB2777" <?php echo register_old('theme_color') === '#DB2777' ? 'selected' : ''; ?>>Pembe</option>
+                                                <option value="#BE123C" <?php echo register_old('theme_color') === '#BE123C' ? 'selected' : ''; ?>>Kırmızı</option>
+                                                <option value="#EA580C" <?php echo register_old('theme_color') === '#EA580C' ? 'selected' : ''; ?>>Turuncu</option>
+                                                <option value="#CA8A04" <?php echo register_old('theme_color') === '#CA8A04' ? 'selected' : ''; ?>>Amber</option>
+                                                <option value="#15803D" <?php echo register_old('theme_color') === '#15803D' ? 'selected' : ''; ?>>Orman Yeşili</option>
+                                                <option value="#0F172A" <?php echo register_old('theme_color') === '#0F172A' ? 'selected' : ''; ?>>Gece Siyahı</option>
+                                                <option value="#334155" <?php echo register_old('theme_color') === '#334155' ? 'selected' : ''; ?>>Antrasit</option>
+                                                <option value="#4B5563" <?php echo register_old('theme_color') === '#4B5563' ? 'selected' : ''; ?>>Gri</option>
+                                                <option value="#FFFFFF" <?php echo register_old('theme_color') === '#FFFFFF' ? 'selected' : ''; ?>>Beyaz</option>
+                                            </select>
+                                            <input type="text" name="theme_color_custom" id="theme-color-custom" class="form-control" placeholder="#0A2F2F" maxlength="7" value="<?php echo htmlspecialchars(register_old('theme_color_custom', register_old('theme_color', '#0A2F2F'))); ?>" oninput="syncThemeColorFromText(this)" onblur="syncThemeColorFromText(this, true)">
+                                        </div>
+                                        <div class="theme-color-preview">
+                                            <span id="theme-color-swatch" class="theme-color-swatch"></span>
+                                            <span id="theme-color-code"><?php echo htmlspecialchars(register_old('theme_color', '#0A2F2F')); ?></span>
+                                        </div>
                                     </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Dijital Kartvizit Profil Fotoğrafı (Opsiyonel)</label>
+                                    <div class="file-upload-box compact" id="panel-photo-dropzone" onclick="triggerFileInput('panel-photo-file')">
+                                        <i data-lucide="image-plus" style="width: 30px; height: 30px; color: #94a3b8; margin-bottom: 0.45rem;"></i>
+                                        <p id="panel-photo-file-name">Profil fotoğrafını sürükleyin veya seçin</p>
+                                        <img id="panel-photo-preview-thumb" class="file-preview-thumb" alt="Profil fotoğrafı önizleme" hidden>
+                                        <div class="file-upload-actions">
+                                            <button type="button" class="file-action-btn secondary" id="panel-photo-preview-btn" onclick="event.stopPropagation(); previewSelectedImage('panel-photo-file');" disabled>Görüntüle</button>
+                                            <button type="button" class="file-action-btn" onclick="event.stopPropagation(); triggerFileInput('panel-photo-file')">Dosya Seç</button>
+                                        </div>
+                                        <input type="file" name="panel_photo" id="panel-photo-file" hidden accept="image/jpeg,image/png,image/webp" onchange="handleSelectedFile('panel-photo-file', 'panel-photo-file-name', 'panel-photo-preview-btn', 'panel-photo-preview-thumb', 'Profil fotoğrafını sürükleyin veya seçin')">
+                                    </div>
+                                    <p class="input-help-text">Kare görsel önerilir (ör: 800x800). JPG, PNG veya WEBP, maksimum 5 MB.</p>
                                 </div>
 
                                 <div class="form-group">
@@ -993,6 +1134,18 @@ if (!is_array($register_social_customs)) {
                 <p>Verileriniz, yasal yükümlülüklerin yerine getirilmesi ve hizmetin yürütülmesi amacıyla anlaşmalı hizmet sağlayıcılarla ve kanunen yetkili kamu kurumlarıyla paylaşılabilir.</p>
                 <p>Kanunun 11. maddesi uyarınca kişisel verilerinize ilişkin erişim, düzeltme, silme, işlemeyi kısıtlama ve itiraz haklarınızı kullanabilirsiniz.</p>
                 <p>Başvurularınızı destek@zerosoft.com e-posta adresi üzerinden veya yazılı olarak iletebilirsiniz.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="kvkk-modal-overlay" id="file-preview-modal" aria-hidden="true">
+        <div class="kvkk-modal" role="dialog" aria-modal="true" aria-labelledby="file-preview-title" style="max-width: 560px;">
+            <div class="kvkk-modal-header">
+                <h3 class="kvkk-modal-title" id="file-preview-title">Görsel Önizleme</h3>
+                <button type="button" class="kvkk-modal-close" id="file-preview-close">Kapat</button>
+            </div>
+            <div class="file-preview-modal-body">
+                <img id="file-preview-image" alt="Yüklenen görsel önizleme">
             </div>
         </div>
     </div>
@@ -1172,8 +1325,11 @@ if (!is_array($register_social_customs)) {
             disabledNote.style.display = isDigitalActive ? 'none' : 'block';
             enabledFields.style.display = isDigitalActive ? 'block' : 'none';
 
-            enabledFields.querySelectorAll('input, textarea, select').forEach((field) => {
+            enabledFields.querySelectorAll('input, textarea, select, button').forEach((field) => {
                 field.disabled = !isDigitalActive;
+            });
+            enabledFields.querySelectorAll('.file-upload-box').forEach((box) => {
+                box.classList.toggle('disabled', !isDigitalActive);
             });
 
             if (isDigitalActive) {
@@ -1228,9 +1384,173 @@ if (!is_array($register_social_customs)) {
             updateDigitalPanelUI();
         }
 
-        function updateFileName(input) {
-            const fileName = input.files[0] ? input.files[0].name : "Logo dosyasını sürükleyin veya seçin";
-            document.getElementById('file-name').innerText = fileName;
+        function normalizeHexColor(value) {
+            const color = String(value || '').trim();
+            return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toUpperCase() : null;
+        }
+
+        function updateThemePreview(color) {
+            const swatch = document.getElementById('theme-color-swatch');
+            const code = document.getElementById('theme-color-code');
+            const safeColor = normalizeHexColor(color) || '#0A2F2F';
+            if (swatch) swatch.style.backgroundColor = safeColor;
+            if (code) code.textContent = safeColor;
+        }
+
+        function ensureThemeSelectOption(color) {
+            const select = document.getElementById('theme-color');
+            if (!select) return;
+            const safeColor = normalizeHexColor(color);
+            if (!safeColor) return;
+
+            const existing = Array.from(select.options).find((option) => option.value.toUpperCase() === safeColor);
+            if (existing) {
+                select.value = existing.value;
+                return;
+            }
+
+            const oldCustomOption = select.querySelector('option[data-custom-color="1"]');
+            if (oldCustomOption) {
+                oldCustomOption.remove();
+            }
+
+            const customOption = document.createElement('option');
+            customOption.value = safeColor;
+            customOption.textContent = `Özel Renk (${safeColor})`;
+            customOption.setAttribute('data-custom-color', '1');
+            select.appendChild(customOption);
+            select.value = safeColor;
+        }
+
+        function syncThemeColorFromSelect(selectElement) {
+            const selected = normalizeHexColor(selectElement ? selectElement.value : '');
+            const input = document.getElementById('theme-color-custom');
+            const color = selected || '#0A2F2F';
+            if (input) {
+                input.value = color;
+            }
+            ensureThemeSelectOption(color);
+            updateThemePreview(color);
+        }
+
+        function syncThemeColorFromText(inputElement, forceFallback = false) {
+            const validColor = normalizeHexColor(inputElement ? inputElement.value : '');
+            if (validColor) {
+                if (inputElement) inputElement.value = validColor;
+                ensureThemeSelectOption(validColor);
+                updateThemePreview(validColor);
+                return;
+            }
+
+            if (!forceFallback) return;
+
+            const select = document.getElementById('theme-color');
+            const fallback = normalizeHexColor(select ? select.value : '') || '#0A2F2F';
+            if (inputElement) {
+                inputElement.value = fallback;
+            }
+            ensureThemeSelectOption(fallback);
+            updateThemePreview(fallback);
+        }
+
+        function triggerFileInput(fileInputId) {
+            const input = document.getElementById(fileInputId);
+            if (!input || input.disabled) return;
+            input.click();
+        }
+
+        function setFileThumb(file, thumbId) {
+            const thumb = document.getElementById(thumbId);
+            if (!thumb) return;
+
+            if (thumb.dataset.objectUrl) {
+                URL.revokeObjectURL(thumb.dataset.objectUrl);
+                delete thumb.dataset.objectUrl;
+            }
+
+            if (!file || !String(file.type || '').startsWith('image/')) {
+                thumb.hidden = true;
+                thumb.removeAttribute('src');
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            thumb.dataset.objectUrl = objectUrl;
+            thumb.src = objectUrl;
+            thumb.hidden = false;
+        }
+
+        function handleSelectedFile(inputId, labelId, previewBtnId, thumbId, defaultText) {
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(labelId);
+            const previewBtn = document.getElementById(previewBtnId);
+            if (!input || !label) return;
+
+            const selectedFile = input.files && input.files.length > 0 ? input.files[0] : null;
+            label.textContent = selectedFile ? selectedFile.name : defaultText;
+            if (previewBtn) {
+                previewBtn.disabled = !selectedFile;
+            }
+            setFileThumb(selectedFile, thumbId);
+        }
+
+        function initDropzone(dropzoneId, inputId, labelId, previewBtnId, thumbId, defaultText) {
+            const dropzone = document.getElementById(dropzoneId);
+            const input = document.getElementById(inputId);
+            if (!dropzone || !input) return;
+
+            ['dragenter', 'dragover'].forEach((eventName) => {
+                dropzone.addEventListener(eventName, (event) => {
+                    event.preventDefault();
+                    if (input.disabled) return;
+                    dropzone.classList.add('dragover');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach((eventName) => {
+                dropzone.addEventListener(eventName, (event) => {
+                    event.preventDefault();
+                    dropzone.classList.remove('dragover');
+                });
+            });
+
+            dropzone.addEventListener('drop', (event) => {
+                if (input.disabled) return;
+                if (!event.dataTransfer || !event.dataTransfer.files || event.dataTransfer.files.length === 0) return;
+                input.files = event.dataTransfer.files;
+                handleSelectedFile(inputId, labelId, previewBtnId, thumbId, defaultText);
+            });
+        }
+
+        const filePreviewModal = document.getElementById('file-preview-modal');
+        const filePreviewImage = document.getElementById('file-preview-image');
+        const filePreviewClose = document.getElementById('file-preview-close');
+
+        function closeFilePreviewModal() {
+            if (!filePreviewModal) return;
+            filePreviewModal.classList.remove('open');
+            filePreviewModal.setAttribute('aria-hidden', 'true');
+            if (filePreviewImage) {
+                filePreviewImage.removeAttribute('src');
+            }
+        }
+
+        function previewSelectedImage(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input || !input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            if (!String(file.type || '').startsWith('image/')) return;
+
+            if (!filePreviewModal || !filePreviewImage) return;
+
+            const objectUrl = URL.createObjectURL(file);
+            filePreviewImage.src = objectUrl;
+            filePreviewModal.classList.add('open');
+            filePreviewModal.setAttribute('aria-hidden', 'false');
+
+            filePreviewImage.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+            };
         }
 
         document.querySelectorAll('input[name="package"]').forEach((input) => {
@@ -1256,6 +1576,22 @@ if (!is_array($register_social_customs)) {
         } else {
             addRegisterSocialRow('instagram');
         }
+
+        const themeCustomInput = document.getElementById('theme-color-custom');
+        const themeSelectInput = document.getElementById('theme-color');
+        const initialTheme = normalizeHexColor(themeCustomInput ? themeCustomInput.value : '')
+            || normalizeHexColor(themeSelectInput ? themeSelectInput.value : '')
+            || '#0A2F2F';
+        ensureThemeSelectOption(initialTheme);
+        if (themeCustomInput) {
+            themeCustomInput.value = initialTheme;
+        }
+        updateThemePreview(initialTheme);
+
+        handleSelectedFile('logo-file', 'file-name', 'logo-preview-btn', 'logo-preview-thumb', 'Logo dosyasını sürükleyin veya seçin');
+        handleSelectedFile('panel-photo-file', 'panel-photo-file-name', 'panel-photo-preview-btn', 'panel-photo-preview-thumb', 'Profil fotoğrafını sürükleyin veya seçin');
+        initDropzone('logo-dropzone', 'logo-file', 'file-name', 'logo-preview-btn', 'logo-preview-thumb', 'Logo dosyasını sürükleyin veya seçin');
+        initDropzone('panel-photo-dropzone', 'panel-photo-file', 'panel-photo-file-name', 'panel-photo-preview-btn', 'panel-photo-preview-thumb', 'Profil fotoğrafını sürükleyin veya seçin');
 
         const kvkkModal = document.getElementById('kvkk-modal');
         const kvkkOpen = document.getElementById('kvkk-open');
@@ -1290,10 +1626,21 @@ if (!is_array($register_social_customs)) {
                 }
             });
         }
+        if (filePreviewClose) {
+            filePreviewClose.addEventListener('click', closeFilePreviewModal);
+        }
+        if (filePreviewModal) {
+            filePreviewModal.addEventListener('click', (event) => {
+                if (event.target === filePreviewModal) {
+                    closeFilePreviewModal();
+                }
+            });
+        }
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeKvkkModal();
+                closeFilePreviewModal();
             }
         });
 
@@ -1303,6 +1650,3 @@ if (!is_array($register_social_customs)) {
     
 </body>
 </html>
-
-
-

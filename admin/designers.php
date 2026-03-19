@@ -70,7 +70,7 @@ $designers = $stmt_designers->fetchAll();
                     <div class="avatar">A</div>
                     <div class="details"><span class="name">Süper Admin</span><span class="role">Zerosoft Yönetici</span></div>
                 </div>
-                <a href="../processes/logout.php" class="logout-btn"><i data-lucide="log-out"></i></a>
+                <a href="../processes/logout.php" class="logout-link"><i data-lucide="log-out"></i> Çıkış Yap</a>
             </div>
         </aside>
 

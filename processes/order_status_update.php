@@ -72,15 +72,43 @@ if ($action === 'approve') {
         exit();
     }
 
-    $stmt = $pdo->prepare("UPDATE orders SET status = 'approved' WHERE id = ?");
-    $stmt->execute([$order_id]);
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("UPDATE orders SET status = 'approved' WHERE id = ?");
+        $stmt->execute([$order_id]);
+
+        $can_update_draft_status = table_exists($pdo, 'design_drafts')
+            && table_has_column($pdo, 'design_drafts', 'order_id')
+            && table_has_column($pdo, 'design_drafts', 'status');
+
+        if ($can_update_draft_status) {
+            $stmt = $pdo->prepare(
+                "UPDATE design_drafts
+                 SET status = 'approved'
+                 WHERE order_id = ?
+                 ORDER BY created_at DESC
+                 LIMIT 1"
+            );
+            $stmt->execute([$order_id]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        header("Location: ../customer/design-tracking.php?error=approve_failed");
+        exit();
+    }
+
     header("Location: ../customer/design-tracking.php?success=approved");
     exit();
 }
 
 if ($action === 'revise') {
     $remaining_revisions = (int)($order['revision_count'] ?? 0);
-    $notes = trim((string)($_POST['revision_notes'] ?? ''));
+    $notes = trim((string)($_POST['revision_notes'] ?? $_POST['revision_note'] ?? ''));
 
     if (!$has_draft) {
         header("Location: ../customer/design-tracking.php?error=no_draft");

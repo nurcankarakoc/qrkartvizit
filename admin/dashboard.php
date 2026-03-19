@@ -120,61 +120,69 @@ $pending_disputes = $stmt_disputes->fetchAll();
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakis</a></li>
-                    <li><a href="orders.php"><i data-lucide="shopping-cart"></i> Tum Siparisler</a></li>
-                    <li><a href="designers.php"><i data-lucide="users"></i> Tasarimci Yonetimi</a></li>
-                    <li><a href="disputes.php"><i data-lucide="alert-circle"></i> Uyusmazliklar</a></li>
+                    <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakış</a></li>
+                    <li><a href="orders.php"><i data-lucide="shopping-cart"></i> Tüm Siparişler</a></li>
+                    <li><a href="designers.php"><i data-lucide="users"></i> Tasarımcı Yönetimi</a></li>
+                    <li><a href="disputes.php"><i data-lucide="alert-circle"></i> Uyuşmazlıklar</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-info">
                     <div class="avatar">A</div>
                     <div class="details">
-                        <span class="name">Super Admin</span>
-                        <span class="role">Zerosoft Yonetici</span>
+                        <span class="name">Sistem Yöneticisi</span>
+                        <span class="role">Super Admin</span>
                     </div>
                 </div>
-                <a href="../processes/logout.php" class="logout-btn"><i data-lucide="log-out"></i></a>
+                <a href="../processes/logout.php" class="logout-link"><i data-lucide="log-out"></i> Çıkış Yap</a>
             </div>
         </aside>
 
         <main class="main-content">
             <header class="top-bar">
-                <h1>Sistem Genel Ozeti</h1>
+                <h1>Sistem Genel Özeti</h1>
                 <div class="header-actions">
-                    <div class="date-badge" style="background: var(--white); padding: 0.5rem 1rem; border-radius: 10px; font-weight: 600; color: var(--navy-blue); border: 1px solid #e2e8f0;"><?php echo date('d.m.Y'); ?></div>
+                    <div class="date-badge" style="background: var(--white); padding: 0.6rem 1.2rem; border-radius: 14px; font-weight: 700; color: var(--navy-blue); border: 1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.02);"><?php echo date('d.m.Y'); ?></div>
                 </div>
             </header>
 
             <div class="content-wrapper">
-                <div class="stats-grid-dashboard">
-                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); color: #fff; border: none;">
+                <div class="stats-grid-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); border: none;">
                         <div class="stat-info">
-                            <span class="label" style="color: rgba(255,255,255,0.8);">Toplam Ciro</span>
-                            <span class="value" style="color: #fff;"><?php echo number_format($total_revenue, 2, ',', '.'); ?> TL</span>
+                            <span class="label" style="color: rgba(255,255,255,0.7); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Toplam Ciro</span>
+                            <span class="value" style="color: #fff; font-size: 1.8rem; font-weight: 800;"><?php echo number_format((float)$total_revenue, 2, ',', '.'); ?> TL</span>
                         </div>
-                        <i data-lucide="wallet" style="opacity: 0.3; width: 48px; height: 48px;"></i>
+                        <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+                            <i data-lucide="wallet" style="width: 24px; height: 24px;"></i>
+                        </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Ek Revize Geliri</span>
-                            <span class="value"><?php echo number_format($extra_rev_total, 2, ',', '.'); ?> TL</span>
+                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Ek Revize Geliri</span>
+                            <span class="value" style="color: var(--navy-blue); font-size: 1.8rem; font-weight: 800;"><?php echo number_format($extra_rev_total, 2, ',', '.'); ?> TL</span>
                         </div>
-                        <i data-lucide="refresh-cw" style="color: var(--gold); opacity: 0.5;"></i>
+                        <div style="width: 50px; height: 50px; background: rgba(166, 128, 63, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+                            <i data-lucide="refresh-cw" style="width: 24px; height: 24px;"></i>
+                        </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Bekleyen Siparis</span>
-                            <span class="value"><?php echo $pending_count; ?></span>
+                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Bekleyen Sipariş</span>
+                            <span class="value" style="color: var(--navy-blue); font-size: 1.8rem; font-weight: 800;"><?php echo (int)$pending_count; ?></span>
                         </div>
-                        <i data-lucide="clock" style="color: var(--navy-blue); opacity: 0.3;"></i>
+                        <div style="width: 50px; height: 50px; background: rgba(10, 47, 47, 0.05); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--navy-blue);">
+                            <i data-lucide="clock" style="width: 24px; height: 24px;"></i>
+                        </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Aktif Uyusmazlik</span>
-                            <span class="value" style="color: #ef4444;"><?php echo count($pending_disputes); ?></span>
+                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Aktif Uyuşmazlık</span>
+                            <span class="value" style="color: #ef4444; font-size: 1.8rem; font-weight: 800;"><?php echo count($pending_disputes); ?></span>
                         </div>
-                        <i data-lucide="alert-triangle" style="color: #ef4444; opacity: 0.3;"></i>
+                        <div style="width: 50px; height: 50px; background: rgba(239, 68, 68, 0.05); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #ef4444;">
+                            <i data-lucide="alert-triangle" style="width: 24px; height: 24px;"></i>
+                        </div>
                     </div>
                 </div>
 

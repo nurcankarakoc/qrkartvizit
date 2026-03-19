@@ -41,6 +41,7 @@ function collect_register_old_input(array $source): array
         'design_notes',
         'panel_display_name',
         'theme_color',
+        'theme_color_custom',
         'panel_bio',
         'panel_website',
         'panel_address',
@@ -122,6 +123,49 @@ function upload_logo_file(array $file, int $user_id): ?string
     }
 
     return $logo_path;
+}
+
+function upload_profile_photo_file(array $file, int $user_id): ?string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('profile_photo_upload_error');
+    }
+
+    if (($file['size'] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException('profile_photo_too_large');
+    }
+
+    $allowed_mimes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    $tmp_name = (string)($file['tmp_name'] ?? '');
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($tmp_name);
+
+    if (!isset($allowed_mimes[$mime])) {
+        throw new RuntimeException('profile_photo_invalid_type');
+    }
+
+    $uploads_dir = __DIR__ . '/../assets/uploads/profiles/';
+    if (!is_dir($uploads_dir) && !mkdir($uploads_dir, 0755, true) && !is_dir($uploads_dir)) {
+        throw new RuntimeException('profile_photo_dir_failed');
+    }
+
+    $file_name = 'profile_' . $user_id . '_' . bin2hex(random_bytes(8)) . '.' . $allowed_mimes[$mime];
+    $photo_path = 'assets/uploads/profiles/' . $file_name;
+
+    if (!move_uploaded_file($tmp_name, __DIR__ . '/../' . $photo_path)) {
+        throw new RuntimeException('profile_photo_move_failed');
+    }
+
+    return $photo_path;
 }
 
 function table_exists(PDO $pdo, string $table): bool
@@ -376,7 +420,11 @@ $panel_display_name = trim((string)($_POST['panel_display_name'] ?? ''));
 $panel_bio = trim((string)($_POST['panel_bio'] ?? ''));
 $panel_website_raw = trim((string)($_POST['panel_website'] ?? ''));
 $panel_address = trim((string)($_POST['panel_address'] ?? ''));
-$theme_color = normalize_theme_color((string)($_POST['theme_color'] ?? '#0A2F2F'));
+$theme_color_input = trim((string)($_POST['theme_color_custom'] ?? ''));
+if ($theme_color_input === '') {
+    $theme_color_input = (string)($_POST['theme_color'] ?? '#0A2F2F');
+}
+$theme_color = normalize_theme_color($theme_color_input);
 $social_links = collect_social_links_from_request();
 $current_step = (int)($_POST['current_step'] ?? 1);
 
@@ -430,6 +478,9 @@ try {
     $user_id = (int)$pdo->lastInsertId();
 
     $logo_path = upload_logo_file($_FILES['logo'] ?? [], $user_id);
+    $profile_photo_path = $is_digital_profile_active
+        ? upload_profile_photo_file($_FILES['panel_photo'] ?? [], $user_id)
+        : null;
 
     $revision_count = ($package === 'panel') ? 0 : 2;
     $order_columns = ['user_id'];
@@ -580,6 +631,10 @@ try {
         $profile_columns[] = 'brand_color';
         $profile_values[] = $theme_color;
     }
+    if ($profile_photo_path !== null && table_has_column($pdo, 'profiles', 'photo_path')) {
+        $profile_columns[] = 'photo_path';
+        $profile_values[] = $profile_photo_path;
+    }
     if (table_has_column($pdo, 'profiles', 'qr_path') && $is_digital_profile_active) {
         $profile_columns[] = 'qr_path';
         $profile_values[] = $dynamic_qr_url;
@@ -616,7 +671,7 @@ try {
     }
 
     $message = (string)$e->getMessage();
-    if (str_starts_with($message, 'logo_')) {
+    if (str_starts_with($message, 'logo_') || str_starts_with($message, 'profile_photo_')) {
         redirect_register_error($message, 3);
     }
 

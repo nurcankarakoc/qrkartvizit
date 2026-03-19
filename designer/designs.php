@@ -21,7 +21,17 @@ $base_sql = "SELECT d.*, o.package, o.status AS order_status, u.name AS customer
              WHERE d.designer_id = ?";
 $params = [$designer_id];
 
-if ($filter !== 'all') {
+if ($filter === 'approved') {
+    $base_sql .= " AND d.id = (
+                        SELECT dd.id
+                        FROM design_drafts dd
+                        WHERE dd.order_id = d.order_id
+                          AND dd.designer_id = d.designer_id
+                        ORDER BY dd.created_at DESC, dd.id DESC
+                        LIMIT 1
+                   )
+                   AND (d.status = 'approved' OR o.status IN ('approved', 'completed'))";
+} elseif ($filter !== 'all') {
     $base_sql .= " AND d.status = ?";
     $params[] = $filter;
 }
@@ -35,6 +45,27 @@ $stmt_count = $pdo->prepare("SELECT status, COUNT(*) AS cnt FROM design_drafts W
 $stmt_count->execute([$designer_id]);
 $count_rows = $stmt_count->fetchAll(PDO::FETCH_KEY_PAIR);
 $count_all = array_sum(array_map('intval', $count_rows));
+
+$stmt_approved_count = $pdo->prepare(
+    "SELECT COUNT(*) FROM (
+        SELECT d.order_id
+        FROM design_drafts d
+        JOIN orders o ON o.id = d.order_id
+        WHERE d.designer_id = ?
+          AND d.id = (
+                SELECT dd.id
+                FROM design_drafts dd
+                WHERE dd.order_id = d.order_id
+                  AND dd.designer_id = d.designer_id
+                ORDER BY dd.created_at DESC, dd.id DESC
+                LIMIT 1
+          )
+          AND (d.status = 'approved' OR o.status IN ('approved', 'completed'))
+        GROUP BY d.order_id
+    ) approved_orders"
+);
+$stmt_approved_count->execute([$designer_id]);
+$approved_total_count = (int)$stmt_approved_count->fetchColumn();
 
 function status_label(string $status): string
 {
@@ -70,35 +101,59 @@ function status_chip_class(string $status): string
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .filter-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-        .filter-link { text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700; }
-        .filter-link.active { background: var(--navy-blue); color: #fff; border-color: var(--navy-blue); }
-        .design-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+        .filter-link { text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700; transition: var(--transition-smooth); }
+        .filter-link.active { background: var(--gold); color: #fff; border-color: var(--gold); box-shadow: 0 4px 12px rgba(166,128,63,0.2); }
+        .filter-link:hover:not(.active) { background: #fff; border-color: var(--gold); color: var(--gold); transform: translateY(-3px); }
+        
+        .design-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
         .design-card { 
-            background: rgba(255, 255, 255, 0.85); 
-            backdrop-filter: blur(8px); 
-            -webkit-backdrop-filter: blur(8px); 
-            border: 1px solid rgba(255, 255, 255, 0.5); 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px); 
+            border: 2px solid rgba(166, 128, 63, 0.3); 
             border-radius: 20px; 
             overflow: hidden; 
-            box-shadow: 0 10px 30px rgba(10, 47, 47, 0.04); 
+            box-shadow: 0 12px 35px rgba(10, 47, 47, 0.06); 
             display: flex; 
             flex-direction: column; 
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: var(--transition-smooth);
         }
-        .design-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(10, 47, 47, 0.08); }
-        .design-preview { height: 180px; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #e2e8f0; }
-        .design-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .design-meta { padding: 0.9rem; display: grid; gap: 0.5rem; }
-        .design-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; }
-        .chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.22rem 0.6rem; font-size: 0.72rem; font-weight: 700; }
+        .design-card:hover { transform: translateY(-5px); box-shadow: 0 18px 45px rgba(10, 47, 47, 0.12); border-color: var(--gold); }
+        
+        .design-preview { height: 220px; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #e2e8f0; position: relative; }
+        .design-preview img { 
+            max-width: 92%; 
+            max-height: 92%; 
+            object-fit: contain; 
+            border: 1.5px solid rgba(166, 128, 63, 0.3); 
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            transition: var(--transition-smooth);
+            background: #fff;
+        }
+        .design-card:hover .design-preview img {
+            border-color: var(--gold);
+            transform: scale(1.03);
+            box-shadow: 0 12px 30px rgba(166, 128, 63, 0.2);
+        }
+
+        .design-meta { padding: 1.25rem; display: grid; gap: 0.6rem; }
+        .design-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        
+        .chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 700; }
         .chip-pending { background: #eff6ff; color: #1d4ed8; }
         .chip-approved { background: #dcfce7; color: #166534; }
         .chip-revision { background: #fff1f2; color: #be123c; }
         .chip-rejected { background: #fef2f2; color: #991b1b; }
-        .mini-btn { text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; border-radius: 10px; padding: 0.45rem 0.7rem; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; }
+        
+        .mini-btn { text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; border-radius: 12px; padding: 0.5rem 0.85rem; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; transition: var(--transition-smooth); }
+        .mini-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(166,128,63,0.1); }
         .mini-btn.primary { background: var(--navy-blue); color: #fff; border-color: var(--navy-blue); }
+        .mini-btn.primary:hover { background: var(--navy-dark); color: #fff; }
+
         @media (max-width: 768px) {
-            .mini-btn { min-height: 44px; }
+            .mini-btn { min-height: 44px; flex: 1; justify-content: center; }
+            .design-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -114,8 +169,8 @@ function status_chip_class(string $status): string
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
-                    <li class="active"><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
-                    <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
+                    <li class="<?php echo ($filter !== 'approved') ? 'active' : ''; ?>"><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
+                    <li class="<?php echo ($filter === 'approved') ? 'active' : ''; ?>"><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
                     <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
                 </ul>
             </nav>
@@ -127,7 +182,7 @@ function status_chip_class(string $status): string
                         <span class="role">Tasarımcı</span>
                     </div>
                 </div>
-                <a href="../processes/logout.php" class="logout-btn"><i data-lucide="log-out"></i></a>
+                <a href="../processes/logout.php" class="logout-link"><i data-lucide="log-out"></i> Çıkış Yap</a>
             </div>
         </aside>
 
@@ -145,7 +200,7 @@ function status_chip_class(string $status): string
             <div class="filter-row">
                 <a href="designs.php?filter=all" class="filter-link <?php echo $filter === 'all' ? 'active' : ''; ?>">Tümü (<?php echo (int)$count_all; ?>)</a>
                 <a href="designs.php?filter=pending" class="filter-link <?php echo $filter === 'pending' ? 'active' : ''; ?>">Beklemede (<?php echo (int)($count_rows['pending'] ?? 0); ?>)</a>
-                <a href="designs.php?filter=approved" class="filter-link <?php echo $filter === 'approved' ? 'active' : ''; ?>">Onaylanan (<?php echo (int)($count_rows['approved'] ?? 0); ?>)</a>
+                <a href="designs.php?filter=approved" class="filter-link <?php echo $filter === 'approved' ? 'active' : ''; ?>">Onaylanan (<?php echo $approved_total_count; ?>)</a>
                 <a href="designs.php?filter=revision_requested" class="filter-link <?php echo $filter === 'revision_requested' ? 'active' : ''; ?>">Revize (<?php echo (int)($count_rows['revision_requested'] ?? 0); ?>)</a>
             </div>
 
@@ -162,6 +217,11 @@ function status_chip_class(string $status): string
                             $is_image = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
                             $asset_href = '../' . ltrim($file_path, '/');
                             $status = strtolower(trim((string)($draft['status'] ?? 'pending')));
+                            $order_status = strtolower(trim((string)($draft['order_status'] ?? 'pending')));
+                            $display_status = $status;
+                            if ($display_status !== 'approved' && in_array($order_status, ['approved', 'completed'], true)) {
+                                $display_status = 'approved';
+                            }
                         ?>
                         <article class="design-card">
                             <div class="design-preview">
@@ -177,7 +237,7 @@ function status_chip_class(string $status): string
                             <div class="design-meta">
                                 <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
                                     <strong>Sipariş #<?php echo (int)$draft['order_id']; ?></strong>
-                                    <span class="chip <?php echo status_chip_class($status); ?>"><?php echo htmlspecialchars(status_label($status)); ?></span>
+                                    <span class="chip <?php echo status_chip_class($display_status); ?>"><?php echo htmlspecialchars(status_label($display_status)); ?></span>
                                 </div>
                                 <div style="font-size:0.85rem; color:#64748b;">Müşteri: <?php echo htmlspecialchars((string)$draft['customer_name']); ?></div>
                                 <div style="font-size:0.82rem; color:#64748b;">Paket: <?php echo htmlspecialchars((string)($draft['package'] ?? 'classic')); ?> | Tarih: <?php echo date('d.m.Y H:i', strtotime((string)$draft['created_at'])); ?></div>
@@ -197,7 +257,8 @@ function status_chip_class(string $status): string
     </div>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
-    
-    <script>lucide.createIcons();</script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

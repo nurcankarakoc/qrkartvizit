@@ -342,50 +342,47 @@ if ($is_digital_profile_active_for_package && $profile_slug !== '') {
     <!-- Sidebar Menu -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <div class="logo">
-                <span style="font-weight: 800; font-size: 1.2rem;">QR Kartvizit</span>
+            <div class="brand-logotype">
+                <div class="mock-logo">Z</div>
+                <span>Zerosoft <small>Panel</small></span>
             </div>
         </div>
-        <nav class="sidebar-menu">
-            <a href="#" class="menu-item active">
-                <i data-lucide="layout-dashboard"></i>
-                <span>Genel Bakış</span>
-            </a>
-            <a href="profile.php" class="menu-item">
-                <i data-lucide="user-cog"></i>
-                <span>Profilimi Düzenle</span>
-            </a>
-            <a href="design-tracking.php" class="menu-item">
-                <i data-lucide="palette"></i>
-                <span>Tasarım Süreci</span>
-            </a>
-            <a href="#" class="menu-item">
-                <i data-lucide="shopping-bag"></i>
-                <span>Siparişlerim</span>
-            </a>
-            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                <a href="../processes/logout.php" class="menu-item" style="color: #ef4444;">
-                    <i data-lucide="log-out"></i>
-                    <span>Çıkış Yap</span>
-                </a>
-            </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakış</a></li>
+                <li><a href="profile.php"><i data-lucide="user-cog"></i> Profilimi Düzenle</a></li>
+                <li><a href="design-tracking.php"><i data-lucide="palette"></i> Tasarım Süreci</a></li>
+                <li><a href="#"><i data-lucide="shopping-bag"></i> Siparişlerim</a></li>
+            </ul>
         </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="avatar"><?php echo strtoupper(substr($user['name'] ?? 'M', 0, 1)); ?></div>
+                <div class="details">
+                    <span class="name"><?php echo htmlspecialchars($user['name'] ?? 'Müşteri'); ?></span>
+                    <span class="role">Premium Üye</span>
+                </div>
+            </div>
+            <a href="../processes/logout.php" class="logout-link"><i data-lucide="log-out"></i> Çıkış Yap</a>
+        </div>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
-        <header class="dashboard-header">
+        <header class="top-bar">
             <div>
-                <h1>Merhaba, <?php echo htmlspecialchars(explode(' ', $user['name'])[0]); ?> 👋</h1>
+                <h1>Merhaba, <?php echo htmlspecialchars(explode(' ', (string)$user['name'])[0]); ?> 👋</h1>
                 <p style="color: #64748b; margin-top: 0.5rem;">Panelinize hoş geldiniz. İşte dijital varlığınızın özeti.</p>
             </div>
-            <div class="user-pill" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.5rem 1.25rem; border-radius: 50px; border: 1px solid #e2e8f0;">
-                <span style="font-weight: 600;"><?php echo htmlspecialchars($user['name']); ?></span>
-                <div style="width: 32px; height: 32px; background: var(--gold); color:#fff; border-radius: 50%; display: flex; align-items:center; justify-content: center; font-size: 0.8rem; font-weight: 800;">
-                    <?php echo strtoupper(substr($user['name'], 0, 1)); ?>
+            <div class="user-pill" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.6rem 1.4rem; border-radius: 50px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <span style="font-weight: 700; color: var(--navy-blue);"><?php echo htmlspecialchars((string)$user['name']); ?></span>
+                <div style="width: 32px; height: 32px; background: var(--gold); color:#fff; border-radius: 12px; display: flex; align-items:center; justify-content: center; font-size: 0.85rem; font-weight: 900; box-shadow: 0 4px 10px rgba(166,128,63,0.3);">
+                    <?php echo strtoupper(substr((string)$user['name'], 0, 1)); ?>
                 </div>
             </div>
         </header>
+
+        <div class="content-wrapper">
 
         <div class="status-grid">
             <!-- Order status card -->
@@ -450,6 +447,7 @@ if ($is_digital_profile_active_for_package && $profile_slug !== '') {
                 </a>
             </div>
         </div>
+        </div> <!-- content-wrapper end -->
     </main>
 
     <script src="../assets/js/dashboard-mobile.js"></script>
