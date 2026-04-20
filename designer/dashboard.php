@@ -1,12 +1,9 @@
 <?php
-session_start();
+require_once '../core/security.php';
+ensure_session_started();
 require_once '../core/db.php';
-
-// Designer check
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {
-    header("Location: ../auth/login.php");
-    exit();
-}
+require_once '../core/security.php';
+require_role_or_redirect($pdo, 'designer', '../auth/login.php');
 
 $designer_id = $_SESSION['user_id'];
 
@@ -32,10 +29,19 @@ $active_orders = $stmt_active->fetchAll();
 $stmt_completed = $pdo->prepare("SELECT o.*, u.name as customer_name 
                                  FROM orders o 
                                  JOIN users u ON o.user_id = u.id
-                                 WHERE o.status IN ('approved', 'completed') 
+                                 WHERE o.status IN ('approved') 
                                  ORDER BY o.created_at DESC LIMIT 10");
 $stmt_completed->execute();
 $completed_orders = $stmt_completed->fetchAll();
+
+// Printing pool
+$stmt_printing = $pdo->prepare("SELECT o.*, u.name as customer_name 
+                                FROM orders o 
+                                JOIN users u ON o.user_id = u.id
+                                WHERE o.status = 'printing' 
+                                ORDER BY o.created_at DESC");
+$stmt_printing->execute();
+$printing_orders = $stmt_printing->fetchAll();
 
 ?>
 <!DOCTYPE html>
@@ -68,7 +74,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
                     <li><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
                     <li><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
-                    <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
+                    <li><a href="form-control.php"><i data-lucide="sliders-horizontal"></i> Form Kontrol Merkezi</a></li>
                 </ul>
             </nav>
 
@@ -111,21 +117,28 @@ $completed_orders = $stmt_completed->fetchAll();
                 </div>
 
                 <div class="stats-grid-dashboard">
-                    <div class="stat-card stat-card-link" data-scroll-target="new-orders-section" role="button" tabindex="0" aria-label="Yeni siparis havuzu bolumune git">
+                    <div class="stat-card stat-card-link" data-scroll-target="new-orders-section" role="button" tabindex="0" aria-label="Yeni sipariş havuzu bölümüne git">
                         <div class="stat-icon new"><i data-lucide="plus-circle"></i></div>
                         <div class="stat-info">
                             <span class="label">Yeni Sipariş</span>
                             <span class="value"><?php echo count($new_orders); ?></span>
                         </div>
                     </div>
-                    <div class="stat-card stat-card-link" data-scroll-target="active-orders-section" role="button" tabindex="0" aria-label="Aktif isler bolumune git">
+                    <div class="stat-card stat-card-link" data-scroll-target="active-orders-section" role="button" tabindex="0" aria-label="Aktif işler bölümüne git">
                         <div class="stat-icon active"><i data-lucide="clock"></i></div>
                         <div class="stat-info">
                             <span class="label">Aktif İşler</span>
                             <span class="value"><?php echo count($active_orders); ?></span>
                         </div>
                     </div>
-                    <div class="stat-card stat-card-link" data-go-url="designs.php?filter=approved" role="button" tabindex="0" aria-label="Onaylanan tasarimlara git">
+                    <div class="stat-card stat-card-link" data-scroll-target="printing-orders-section" role="button" tabindex="0" aria-label="Baskıda olan işler bölümüne git">
+                        <div class="stat-icon" style="background:#fff7ed; color:#ea580c;"><i data-lucide="printer"></i></div>
+                        <div class="stat-info">
+                            <span class="label">Baskıda</span>
+                            <span class="value"><?php echo count($printing_orders); ?></span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-card-link" data-go-url="designs.php?filter=approved" role="button" tabindex="0" aria-label="Onaylanan tasarımlara git">
                         <div class="stat-icon completed"><i data-lucide="check-circle-2"></i></div>
                         <div class="stat-info">
                             <span class="label">Onaylanan</span>
@@ -141,7 +154,7 @@ $completed_orders = $stmt_completed->fetchAll();
                             <h2>Yeni Sipariş Havuzu</h2>
                             <a href="designs.php?filter=pending" class="view-all">Tümünü Gör</a>
                         </div>
-                        <table class="data-table">
+                        <table class="data-table responsive-table">
                             <thead>
                                 <tr>
                                     <th>Müşteri</th>
@@ -163,16 +176,16 @@ $completed_orders = $stmt_completed->fetchAll();
                                             data-package="<?php echo htmlspecialchars((string)($order['package'] ?? 'classic'), ENT_QUOTES, 'UTF-8'); ?>"
                                             data-status="pending"
                                         >
-                                            <td>
+                                            <td data-label="Müşteri">
                                                 <div class="customer-cell">
                                                     <div class="initials"><?php echo strtoupper(substr($order['customer_name'], 0, 1)); ?></div>
                                                     <span><?php echo htmlspecialchars($order['customer_name']); ?></span>
                                                 </div>
                                             </td>
-                                            <td><span class="badge package-<?php echo strtolower($order['package'] ?? 'classic'); ?>"><?php echo htmlspecialchars($order['package'] ?? 'Classic'); ?></span></td>
-                                            <td><?php echo date('d.m.Y', strtotime($order['created_at'])); ?></td>
-                                            <td><span class="status-dot pending"></span> Yeni Sipariş</td>
-                                            <td><a href="order_details.php?id=<?php echo $order['id']; ?>" class="btn-action">İncele</a></td>
+                                            <td data-label="Paket"><span class="badge package-<?php echo strtolower($order['package'] ?? 'classic'); ?>"><?php echo htmlspecialchars($order['package'] ?? 'Classic'); ?></span></td>
+                                            <td data-label="Tarih"><?php echo date('d.m.Y', strtotime($order['created_at'])); ?></td>
+                                            <td data-label="Durum"><span class="status-dot pending"></span> Yeni Sipariş</td>
+                                            <td data-label="Aksiyon" class="cell-actions"><a href="order_details.php?id=<?php echo $order['id']; ?>" class="btn-action">İncele</a></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -186,19 +199,18 @@ $completed_orders = $stmt_completed->fetchAll();
                             <h2>Üzerimdeki İşler</h2>
                             <a href="designs.php" class="view-all">Tümünü Gör</a>
                         </div>
-                        <table class="data-table">
+                        <table class="data-table responsive-table">
                             <thead>
                                 <tr>
                                     <th>Müşteri</th>
                                     <th>Durum</th>
-                                    <th>Revize</th>
-                                    <th>Kalan Hak</th>
+                                    <th>Tarih</th>
                                     <th>Aksiyon</th>
                                 </tr>
                             </thead>
                             <tbody id="active-orders-body">
                                 <?php if (empty($active_orders)): ?>
-                                    <tr><td colspan="5" class="empty-state">Şu an aktif bir işiniz bulunmuyor.</td></tr>
+                                    <tr><td colspan="4" class="empty-state">Şu an aktif bir işiniz bulunmuyor.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($active_orders as $order): ?>
                                         <tr
@@ -208,8 +220,8 @@ $completed_orders = $stmt_completed->fetchAll();
                                             data-package="<?php echo htmlspecialchars((string)($order['package'] ?? 'classic'), ENT_QUOTES, 'UTF-8'); ?>"
                                             data-status="<?php echo htmlspecialchars((string)$order['status'], ENT_QUOTES, 'UTF-8'); ?>"
                                         >
-                                            <td><?php echo htmlspecialchars($order['customer_name']); ?></td>
-                                            <td>
+                                            <td data-label="Müşteri"><?php echo htmlspecialchars($order['customer_name']); ?></td>
+                                            <td data-label="Durum">
                                                 <?php if($order['status'] == 'revision_requested'): ?>
                                                     <span class="status-chip revision">Revize İstendi</span>
                                                 <?php elseif($order['status'] == 'awaiting_approval'): ?>
@@ -218,9 +230,52 @@ $completed_orders = $stmt_completed->fetchAll();
                                                     <span class="status-chip designing">Tasarım Yapılıyor</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo $order['package'] ?? 'Klasik'; ?></td>
-                                            <td><?php echo $order['revision_count'] ?? 0; ?></td>
-                                            <td><a href="order_details.php?id=<?php echo $order['id']; ?>" class="btn-action primary">İncele/Yükle</a></td>
+                                            <td data-label="Tarih"><?php echo date('d.m.Y', strtotime($order['created_at'])); ?></td>
+                                            <td data-label="Aksiyon" class="cell-actions"><a href="order_details.php?id=<?php echo $order['id']; ?>" class="btn-action primary">Detay</a></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <!-- Printing Orders Table -->
+                    <section class="table-container" id="printing-orders-section">
+                        <div class="table-header">
+                            <h2>Baskıdaki İşler</h2>
+                            <a href="designs.php?filter=approved" class="view-all">Tümünü Gör</a>
+                        </div>
+                        <table class="data-table responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>Müşteri</th>
+                                    <th>Paket</th>
+                                    <th>Baskı Tarihi</th>
+                                    <th>Aksiyon</th>
+                                </tr>
+                            </thead>
+                            <tbody id="printing-orders-body">
+                                <?php if (empty($printing_orders)): ?>
+                                    <tr><td colspan="4" class="empty-state">Baskıda olan sipariş bulunmuyor.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($printing_orders as $order): ?>
+                                        <tr
+                                            data-search-row="printing"
+                                            data-order-id="<?php echo (int)$order['id']; ?>"
+                                            data-customer="<?php echo htmlspecialchars((string)$order['customer_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-status="printing"
+                                        >
+                                            <td data-label="Müşteri">
+                                                <div class="customer-cell">
+                                                    <div class="initials" style="background:#fff7ed; color:#ea580c; border:1px solid #fed7aa;">
+                                                        <?php echo strtoupper(substr($order['customer_name'], 0, 1)); ?>
+                                                    </div>
+                                                    <span><?php echo htmlspecialchars($order['customer_name']); ?></span>
+                                                </div>
+                                            </td>
+                                            <td data-label="Paket"><span class="badge" style="background:rgba(234,88,12,0.1); color:#ea580c; border:1px solid rgba(234,88,12,0.2);"><?php echo htmlspecialchars($order['package'] ?? 'Classic'); ?></span></td>
+                                            <td data-label="Tarih"><?php echo date('d.m.Y', strtotime($order['created_at'])); ?></td>
+                                            <td data-label="Aksiyon" class="cell-actions"><a href="order_details.php?id=<?php echo $order['id']; ?>" class="btn-action">İncele</a></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -367,8 +422,10 @@ $completed_orders = $stmt_completed->fetchAll();
 
             const newOrdersBody = document.getElementById('new-orders-body');
             const activeOrdersBody = document.getElementById('active-orders-body');
+            const printingOrdersBody = document.getElementById('printing-orders-body');
             const newEmptyRow = ensureSearchEmptyRow(newOrdersBody, 'search-empty-new-orders', 'Aramaya uygun yeni sipariş bulunamadı.');
             const activeEmptyRow = ensureSearchEmptyRow(activeOrdersBody, 'search-empty-active-orders', 'Aramaya uygun aktif iş bulunamadı.');
+            const printingEmptyRow = ensureSearchEmptyRow(printingOrdersBody, 'search-empty-printing-orders', 'Aramaya uygun baskıdaki iş bulunamadı.');
 
             const suggestionLimit = 8;
 
@@ -376,9 +433,9 @@ $completed_orders = $stmt_completed->fetchAll();
                 switch (status) {
                     case 'pending':
                     case 'pending_design':
-                        return 'Yeni siparis';
+                        return 'Yeni sipariş';
                     case 'designing':
-                        return 'Tasarim asamasinda';
+                        return 'Tasarım aşamasında';
                     case 'revision_requested':
                         return 'Revize istendi';
                     case 'awaiting_approval':
@@ -420,7 +477,7 @@ $completed_orders = $stmt_completed->fetchAll();
                     btn.dataset.href = model.actionHref;
 
                     title.className = 'search-suggestion-title';
-                    title.textContent = `${model.customer || 'Musteri'} (#${model.orderId || '-'})`;
+                    title.textContent = `${model.customer || 'Müşteri'} (#${model.orderId || '-'})`;
 
                     meta.className = 'search-suggestion-meta';
                     meta.textContent = `${model.packageName || 'classic'} • ${getStatusLabel(model.status)}`;
@@ -470,12 +527,13 @@ $completed_orders = $stmt_completed->fetchAll();
                 const newVisible = newOrdersBody
                     ? Array.from(newOrdersBody.querySelectorAll('tr[data-search-row]')).filter((row) => row.style.display !== 'none').length
                     : 0;
-                const activeVisible = activeOrdersBody
-                    ? Array.from(activeOrdersBody.querySelectorAll('tr[data-search-row]')).filter((row) => row.style.display !== 'none').length
+                const printingVisible = printingOrdersBody
+                    ? Array.from(printingOrdersBody.querySelectorAll('tr[data-search-row]')).filter((row) => row.style.display !== 'none').length
                     : 0;
 
                 if (newEmptyRow) newEmptyRow.style.display = newVisible === 0 ? '' : 'none';
                 if (activeEmptyRow) activeEmptyRow.style.display = activeVisible === 0 ? '' : 'none';
+                if (printingEmptyRow) printingEmptyRow.style.display = printingVisible === 0 ? '' : 'none';
 
                 if (searchMeta) {
                     if (query === '') {

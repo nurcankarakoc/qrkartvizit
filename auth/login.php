@@ -166,6 +166,18 @@ ensure_session_started();
             .form-header h1 { font-size: 1.75rem; }
             .form-group { margin-bottom: 1.25rem; }
         }
+
+        @media (max-width: 360px) {
+            .auth-main { padding: 1rem 0.75rem calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
+            .form-header h1 { font-size: 1.55rem; }
+            .form-header p { font-size: 0.9rem; }
+            .form-control { padding: 0.85rem 1rem 0.85rem 2.8rem; }
+        }
+
+        /* Prevent iOS input zoom */
+        .form-control, input, select, textarea {
+            font-size: 16px !important;
+        }
     </style>
 </head>
 <body>
@@ -193,7 +205,7 @@ ensure_session_started();
 
                 <?php if(isset($_GET['success']) && $_GET['success'] === 'register'): ?>
                     <div class="auth-alert auth-alert-success">
-                        Siparişiniz başarıyla alındı. Giriş yaparak panelinizden süreci takip edebilirsiniz.
+                        Hesabınız başarıyla oluşturuldu. Giriş yaptıktan sonra paket seçimine geçeceksiniz.
                     </div>
                 <?php endif; ?>
 
@@ -204,6 +216,12 @@ ensure_session_started();
                             elseif($_GET['error'] == 'empty') echo 'Lütfen tüm alanları doldurun.';
                             else echo 'Bir hata oluştu. Lütfen tekrar deneyin.';
                         ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if(isset($_GET['success']) && $_GET['success'] === 'reset'): ?>
+                    <div class="auth-alert auth-alert-success">
+                        Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
                     </div>
                 <?php endif; ?>
 
@@ -220,7 +238,7 @@ ensure_session_started();
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>Şifre</label>
-                            <a href="#" style="font-size: 0.8rem; color: var(--gold); font-weight: 700; text-decoration: none; margin-bottom: 0.5rem;">Şifremi Unuttum?</a>
+                            <a href="forgot-password.php" style="font-size: 0.8rem; color: var(--gold); font-weight: 700; text-decoration: none; margin-bottom: 0.5rem;">Şifremi Unuttum?</a>
                         </div>
                         <div class="input-group">
                             <i data-lucide="lock"></i>

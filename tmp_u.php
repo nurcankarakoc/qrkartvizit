@@ -1,0 +1,1 @@
+<?php require chr(39)+chr(99)+chr(111)+chr(114)+chr(101)+chr(47)+chr(100)+chr(98)+chr(46)+chr(112)+chr(104)+chr(112)+chr(39); foreach(->query(chr(39)+chr(68)+chr(69)+chr(83)+chr(67)+chr(82)+chr(73)+chr(66)+chr(69)+chr(32)+chr(117)+chr(115)+chr(101)+chr(114)+chr(115)+chr(39)) as ) echo [chr(39)+chr(70)+chr(105)+chr(101)+chr(108)+chr(100)+chr(39)].chr(10); ?>

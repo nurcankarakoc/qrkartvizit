@@ -1,12 +1,10 @@
 <?php
-session_start();
+require_once '../core/security.php';
+ensure_session_started();
 require_once '../core/db.php';
 require_once '../core/security.php';
 
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    header("Location: ../auth/login.php");
-    exit();
-}
+require_role_or_redirect($pdo, 'admin', '../auth/login.php');
 
 $stmt_orders = $pdo->query("SELECT o.*, u.name as customer_name
                             FROM orders o
@@ -16,24 +14,23 @@ $orders = $stmt_orders->fetchAll();
 
 $status_map = [
     'pending' => 'Bekleyen',
-    'pending_payment' => 'Odeme Bekliyor',
-    'pending_design' => 'Tasarim Havuzu',
-    'designing' => 'Tasarimda',
-    'awaiting_approval' => 'Musteri Onayi',
-    'revision_requested' => 'Revize Istendi',
-    'approved' => 'Basima Hazir',
+    'pending_payment' => 'Ödeme Bekliyor',
+    'pending_design' => 'Tasarım Havuzu',
+    'designing' => 'Tasarımda',
+    'awaiting_approval' => 'Müşteri Onayı',
+    'revision_requested' => 'Revize İstendi',
+    'approved' => 'Basıma Hazır',
     'printing' => 'Baskida',
     'shipping' => 'Kargoda',
-    'completed' => 'Tamamlandi',
-    'disputed' => 'Itirazli',
+    'completed' => 'Tamamlandı',
 ];
 
 $status_options = array_keys($status_map);
 $message_key = trim((string)($_GET['msg'] ?? ''));
 $message_map = [
-    'updated' => ['type' => 'success', 'text' => 'Siparis durumu guncellendi.'],
-    'invalid' => ['type' => 'error', 'text' => 'Gecersiz istek alindi.'],
-    'error' => ['type' => 'error', 'text' => 'Siparis guncellenirken bir hata olustu.'],
+    'updated' => ['type' => 'success', 'text' => 'Sipariş durumu güncellendi.'],
+    'invalid' => ['type' => 'error', 'text' => 'Geçersiz istek alındı.'],
+    'error' => ['type' => 'error', 'text' => 'Sipariş güncellenirken bir hata oluştu.'],
 ];
 $flash = $message_map[$message_key] ?? null;
 ?>
@@ -42,7 +39,7 @@ $flash = $message_map[$message_key] ?? null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siparis Yonetimi - Zerosoft</title>
+    <title>Sipariş Yönetimi - Zerosoft</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -61,7 +58,6 @@ $flash = $message_map[$message_key] ?? null;
         .status-badge.printing { background: #e0f2fe; color: #0c4a6e; }
         .status-badge.shipping { background: #ede9fe; color: #5b21b6; }
         .status-badge.completed { background: #f1f5f9; color: #475569; }
-        .status-badge.disputed { background: #fef2f2; color: #b91c1c; }
         .status-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
         .status-select { min-width: 145px; padding: 0.45rem 0.6rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 0.82rem; }
         .status-save-btn { border: none; border-radius: 8px; padding: 0.45rem 0.7rem; font-size: 0.75rem; font-weight: 700; cursor: pointer; background: var(--navy-blue); color: #fff; }
@@ -69,6 +65,11 @@ $flash = $message_map[$message_key] ?? null;
         .flash.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
         .flash.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
         .table-container { overflow-x: auto; }
+        @media (max-width: 768px) {
+            .status-form { width: 100%; display: grid; gap: 0.55rem; }
+            .status-select, .status-save-btn, .status-form .btn-action { width: 100%; }
+            .status-form .btn-action { justify-content: center; }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -82,10 +83,10 @@ $flash = $message_map[$message_key] ?? null;
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakis</a></li>
-                    <li class="active"><a href="orders.php"><i data-lucide="shopping-cart"></i> Tum Siparisler</a></li>
-                    <li><a href="designers.php"><i data-lucide="users"></i> Tasarimci Yonetimi</a></li>
-                    <li><a href="disputes.php"><i data-lucide="alert-circle"></i> Uyusmazliklar</a></li>
+                    <li><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakış</a></li>
+                    <li class="active"><a href="orders.php"><i data-lucide="shopping-cart"></i> Tüm Siparişler</a></li>
+                    <li><a href="form-approvals.php"><i data-lucide="clipboard-check"></i> Form Onayları</a></li>
+                    <li><a href="packages.php"><i data-lucide="package-2"></i> Paketler</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -99,7 +100,7 @@ $flash = $message_map[$message_key] ?? null;
 
         <main class="main-content">
             <header class="top-bar">
-                <h1>Tum Siparisler</h1>
+                <h1>Tüm Siparişler</h1>
             </header>
 
             <?php if ($flash): ?>
@@ -108,36 +109,39 @@ $flash = $message_map[$message_key] ?? null;
 
             <div class="content-wrapper">
                 <section class="table-container">
-                    <table class="data-table">
+                    <table class="data-table responsive-table">
                         <thead>
                             <tr>
                                 <th>#ID</th>
-                                <th>Musteri</th>
+                                <th>Müşteri</th>
                                 <th>Paket</th>
                                 <th>Durum</th>
                                 <th>Kalan Revize</th>
                                 <th>Tarih</th>
-                                <th>Islem</th>
+                                <th>İşlem</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($orders)): ?>
-                                <tr><td colspan="7" class="empty-state">Kayitli siparis bulunmuyor.</td></tr>
+                                <tr><td colspan="7" class="empty-state">Kayıtlı sipariş bulunmuyor.</td></tr>
                             <?php else: ?>
                                 <?php foreach ($orders as $order): ?>
-                                    <?php $status = (string)($order['status'] ?? 'pending'); ?>
+                                    <?php
+                                    $status = (string)($order['status'] ?? 'pending');
+                                    $display_status = $status === 'disputed' ? 'revision_requested' : $status;
+                                    ?>
                                     <tr>
-                                        <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
-                                        <td><?php echo htmlspecialchars((string)$order['customer_name']); ?></td>
-                                        <td><?php echo htmlspecialchars((string)($order['package'] ?? 'classic')); ?></td>
-                                        <td>
-                                            <span class="badge status-badge <?php echo htmlspecialchars($status); ?>">
-                                                <?php echo htmlspecialchars($status_map[$status] ?? $status); ?>
+                                        <td data-label="#ID"><strong>#<?php echo (int)$order['id']; ?></strong></td>
+                                        <td data-label="Müşteri"><?php echo htmlspecialchars((string)$order['customer_name']); ?></td>
+                                        <td data-label="Paket"><?php echo htmlspecialchars((string)($order['package'] ?? 'classic')); ?></td>
+                                        <td data-label="Durum">
+                                            <span class="badge status-badge <?php echo htmlspecialchars($display_status); ?>">
+                                                <?php echo htmlspecialchars($status_map[$display_status] ?? $display_status); ?>
                                             </span>
                                         </td>
-                                        <td><?php echo (int)($order['revision_count'] ?? 0); ?> Hak</td>
-                                        <td><?php echo date('d.m.Y', strtotime((string)$order['created_at'])); ?></td>
-                                        <td>
+                                        <td data-label="Kalan Revize"><?php echo (int)($order['revision_count'] ?? 0); ?> Hak</td>
+                                        <td data-label="Tarih"><?php echo date('d.m.Y', strtotime((string)$order['created_at'])); ?></td>
+                                        <td data-label="İşlem" class="cell-actions">
                                             <form action="../processes/admin_actions.php" method="POST" class="status-form">
                                                 <?php echo csrf_input(); ?>
                                                 <input type="hidden" name="action" value="update_order_status">
@@ -150,9 +154,6 @@ $flash = $message_map[$message_key] ?? null;
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <button type="submit" class="status-save-btn">Kaydet</button>
-                                                <?php if ($status === 'disputed'): ?>
-                                                    <a href="disputes.php" class="btn-action">Incele</a>
-                                                <?php endif; ?>
                                             </form>
                                         </td>
                                     </tr>

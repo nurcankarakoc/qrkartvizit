@@ -1,15 +1,13 @@
 <?php
-session_start();
+require_once '../core/security.php';
+ensure_session_started();
 require_once '../core/db.php';
-
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {
-    header("Location: ../auth/login.php");
-    exit();
-}
+require_once '../core/security.php';
+require_role_or_redirect($pdo, 'designer', '../auth/login.php');
 
 $designer_id = (int)($_SESSION['user_id'] ?? 0);
 $filter = strtolower(trim((string)($_GET['filter'] ?? 'all')));
-$allowed_filters = ['all', 'pending', 'approved', 'revision_requested', 'rejected'];
+$allowed_filters = ['all', 'pending', 'approved', 'printing', 'revision_requested', 'rejected'];
 if (!in_array($filter, $allowed_filters, true)) {
     $filter = 'all';
 }
@@ -31,6 +29,8 @@ if ($filter === 'approved') {
                         LIMIT 1
                    )
                    AND (d.status = 'approved' OR o.status IN ('approved', 'completed'))";
+} elseif ($filter === 'printing') {
+    $base_sql .= " AND (d.status = 'printing' OR o.status = 'printing')";
 } elseif ($filter !== 'all') {
     $base_sql .= " AND d.status = ?";
     $params[] = $filter;
@@ -41,29 +41,43 @@ $stmt = $pdo->prepare($base_sql);
 $stmt->execute($params);
 $drafts = $stmt->fetchAll();
 
-$stmt_count = $pdo->prepare("SELECT status, COUNT(*) AS cnt FROM design_drafts WHERE designer_id = ? GROUP BY status");
+$stmt_count = $pdo->prepare("
+    SELECT final_status, COUNT(*) as cnt
+    FROM (
+        SELECT 
+            CASE 
+                WHEN o.status = 'printing' THEN 'printing'
+                WHEN o.status = 'completed' THEN 'approved'
+                WHEN o.status = 'approved' THEN 'approved'
+                ELSE d.status 
+            END as final_status
+        FROM design_drafts d
+        JOIN orders o ON o.id = d.order_id
+        WHERE d.designer_id = ?
+    ) as merged_stats
+    GROUP BY final_status
+");
 $stmt_count->execute([$designer_id]);
 $count_rows = $stmt_count->fetchAll(PDO::FETCH_KEY_PAIR);
 $count_all = array_sum(array_map('intval', $count_rows));
 
-$stmt_approved_count = $pdo->prepare(
-    "SELECT COUNT(*) FROM (
-        SELECT d.order_id
-        FROM design_drafts d
-        JOIN orders o ON o.id = d.order_id
-        WHERE d.designer_id = ?
-          AND d.id = (
-                SELECT dd.id
-                FROM design_drafts dd
-                WHERE dd.order_id = d.order_id
-                  AND dd.designer_id = d.designer_id
-                ORDER BY dd.created_at DESC, dd.id DESC
-                LIMIT 1
-          )
-          AND (d.status = 'approved' OR o.status IN ('approved', 'completed'))
-        GROUP BY d.order_id
-    ) approved_orders"
-);
+// Baskıdaki siparişleri gerçek düzende say (benzersiz siparişler)
+$stmt_printing_count = $pdo->prepare("
+    SELECT COUNT(DISTINCT d.order_id)
+    FROM design_drafts d
+    JOIN orders o ON o.id = d.order_id
+    WHERE d.designer_id = ? AND o.status = 'printing'
+");
+$stmt_printing_count->execute([$designer_id]);
+$printing_total_count = (int)$stmt_printing_count->fetchColumn();
+
+// Onaylanmış (ama henüz baskıya gitmemiş) siparişler
+$stmt_approved_count = $pdo->prepare("
+    SELECT COUNT(DISTINCT d.order_id)
+    FROM design_drafts d
+    JOIN orders o ON o.id = d.order_id
+    WHERE d.designer_id = ? AND o.status = 'approved'
+");
 $stmt_approved_count->execute([$designer_id]);
 $approved_total_count = (int)$stmt_approved_count->fetchColumn();
 
@@ -71,6 +85,7 @@ function status_label(string $status): string
 {
     return match ($status) {
         'approved' => 'Onaylandı',
+        'printing' => 'Baskıda',
         'revision_requested' => 'Revize İstendi',
         'rejected' => 'Reddedildi',
         default => 'Beklemede',
@@ -81,6 +96,7 @@ function status_chip_class(string $status): string
 {
     return match ($status) {
         'approved' => 'chip-approved',
+        'printing' => 'chip-printing',
         'revision_requested' => 'chip-revision',
         'rejected' => 'chip-rejected',
         default => 'chip-pending',
@@ -143,6 +159,7 @@ function status_chip_class(string $status): string
         .chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 700; }
         .chip-pending { background: #eff6ff; color: #1d4ed8; }
         .chip-approved { background: #dcfce7; color: #166534; }
+        .chip-printing { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
         .chip-revision { background: #fff1f2; color: #be123c; }
         .chip-rejected { background: #fef2f2; color: #991b1b; }
         
@@ -171,7 +188,7 @@ function status_chip_class(string $status): string
                     <li><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Panel</a></li>
                     <li class="<?php echo ($filter !== 'approved') ? 'active' : ''; ?>"><a href="designs.php"><i data-lucide="image"></i> Tasarımlarım</a></li>
                     <li class="<?php echo ($filter === 'approved') ? 'active' : ''; ?>"><a href="designs.php?filter=approved"><i data-lucide="check-circle"></i> Onaylananlar</a></li>
-                    <li><a href="#"><i data-lucide="settings"></i> Ayarlar</a></li>
+                    <li><a href="form-control.php"><i data-lucide="sliders-horizontal"></i> Form Kontrol Merkezi</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -201,6 +218,7 @@ function status_chip_class(string $status): string
                 <a href="designs.php?filter=all" class="filter-link <?php echo $filter === 'all' ? 'active' : ''; ?>">Tümü (<?php echo (int)$count_all; ?>)</a>
                 <a href="designs.php?filter=pending" class="filter-link <?php echo $filter === 'pending' ? 'active' : ''; ?>">Beklemede (<?php echo (int)($count_rows['pending'] ?? 0); ?>)</a>
                 <a href="designs.php?filter=approved" class="filter-link <?php echo $filter === 'approved' ? 'active' : ''; ?>">Onaylanan (<?php echo $approved_total_count; ?>)</a>
+                <a href="designs.php?filter=printing" class="filter-link <?php echo $filter === 'printing' ? 'active' : ''; ?>">Baskıda (<?php echo $printing_total_count; ?>)</a>
                 <a href="designs.php?filter=revision_requested" class="filter-link <?php echo $filter === 'revision_requested' ? 'active' : ''; ?>">Revize (<?php echo (int)($count_rows['revision_requested'] ?? 0); ?>)</a>
             </div>
 
@@ -219,8 +237,8 @@ function status_chip_class(string $status): string
                             $status = strtolower(trim((string)($draft['status'] ?? 'pending')));
                             $order_status = strtolower(trim((string)($draft['order_status'] ?? 'pending')));
                             $display_status = $status;
-                            if ($display_status !== 'approved' && in_array($order_status, ['approved', 'completed'], true)) {
-                                $display_status = 'approved';
+                            if ($order_status === 'printing' || $order_status === 'completed') {
+                                $display_status = $order_status;
                             }
                         ?>
                         <article class="design-card">

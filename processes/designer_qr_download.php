@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../core/security.php';
+ensure_session_started();
 require_once '../core/db.php';
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'designer') {

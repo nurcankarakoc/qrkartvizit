@@ -1,7 +1,9 @@
 <?php
-session_start();
+require_once __DIR__ . '/../core/security.php';
+ensure_session_started();
 require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/customer_access.php';
 
 function redirect_with_fallback(string $url): void
 {
@@ -77,7 +79,7 @@ function redirect_register_error(string $error_code, int $step = 1, bool $preser
         unset($_SESSION['register_old_input']);
     }
 
-    $safe_step = max(1, min(3, $step));
+    $safe_step = 1;
     $_SESSION['register_error_step'] = $safe_step;
     redirect_with_fallback('../auth/register.php?error=' . urlencode($error_code));
 }
@@ -227,6 +229,10 @@ function resolve_package_price(PDO $pdo, string $package): float
 {
     $fallback_map = [
         'classic' => 299.00,
+        'panel' => 700.00,
+        'smart' => 1200.00,
+    ];
+    $legacy_map = [
         'panel' => 199.00,
         'smart' => 499.00,
     ];
@@ -243,7 +249,12 @@ function resolve_package_price(PDO $pdo, string $package): float
         return $fallback_map[$package] ?? 0.0;
     }
 
-    return (float)$price;
+    $resolved_price = (float)$price;
+    if (isset($legacy_map[$package]) && abs($resolved_price - $legacy_map[$package]) < 0.0001) {
+        return $fallback_map[$package] ?? $resolved_price;
+    }
+
+    return $resolved_price;
 }
 
 function normalize_social_url(string $platform, string $raw_url): ?string
@@ -410,11 +421,10 @@ $name = trim((string)($_POST['name'] ?? ''));
 $email = trim((string)($_POST['email'] ?? ''));
 $password = (string)($_POST['password'] ?? '');
 $phone = trim((string)($_POST['phone'] ?? ''));
-$package = strtolower(trim((string)($_POST['package'] ?? 'smart')));
+$package = strtolower(trim((string)($_POST['package'] ?? '')));
 $kvkk_approved = isset($_POST['kvkk_approved']) ? 1 : 0;
 $company_name = trim((string)($_POST['company_name'] ?? ''));
 $job_title = trim((string)($_POST['job_title'] ?? ''));
-$design_notes = trim((string)($_POST['design_notes'] ?? ''));
 
 $panel_display_name = trim((string)($_POST['panel_display_name'] ?? ''));
 $panel_bio = trim((string)($_POST['panel_bio'] ?? ''));
@@ -428,6 +438,11 @@ $theme_color = normalize_theme_color($theme_color_input);
 $social_links = collect_social_links_from_request();
 $current_step = (int)($_POST['current_step'] ?? 1);
 
+$allowed_packages = ['classic', 'smart', 'panel'];
+if (!in_array($package, $allowed_packages, true)) {
+    $package = '';
+}
+
 if ($name === '' || $email === '' || $password === '') {
     redirect_register_error('required', max(1, $current_step));
 }
@@ -437,21 +452,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 if (!$kvkk_approved) {
-    redirect_register_error('kvkk', 3);
-}
-
-$allowed_packages = ['classic', 'smart', 'panel'];
-if (!in_array($package, $allowed_packages, true)) {
-    $package = 'smart';
-}
-
-$is_digital_profile_active = has_digital_profile_package($package);
-if (!$is_digital_profile_active) {
-    $panel_display_name = '';
-    $panel_bio = '';
-    $panel_website_raw = '';
-    $panel_address = '';
-    $social_links = [];
+    redirect_register_error('kvkk', 2);
 }
 
 if ($panel_display_name === '') {
@@ -477,115 +478,15 @@ try {
     $stmt->execute($user_values);
     $user_id = (int)$pdo->lastInsertId();
 
-    $logo_path = upload_logo_file($_FILES['logo'] ?? [], $user_id);
-    $profile_photo_path = $is_digital_profile_active
-        ? upload_profile_photo_file($_FILES['panel_photo'] ?? [], $user_id)
-        : null;
-
-    $revision_count = ($package === 'panel') ? 0 : 2;
-    $order_columns = ['user_id'];
-    $order_values = [$user_id];
-
-    if (table_has_column($pdo, 'orders', 'package')) {
-        $order_columns[] = 'package';
-        $order_values[] = $package;
-    }
-    if (table_has_column($pdo, 'orders', 'company_name')) {
-        $order_columns[] = 'company_name';
-        $order_values[] = $company_name;
-    }
-    if (table_has_column($pdo, 'orders', 'job_title')) {
-        $order_columns[] = 'job_title';
-        $order_values[] = $job_title;
-    }
-    if (table_has_column($pdo, 'orders', 'logo_path')) {
-        $order_columns[] = 'logo_path';
-        $order_values[] = $logo_path;
-    }
-    if (table_has_column($pdo, 'orders', 'design_notes')) {
-        $order_columns[] = 'design_notes';
-        $order_values[] = $design_notes;
-    }
-    if (table_has_column($pdo, 'orders', 'revision_count')) {
-        $order_columns[] = 'revision_count';
-        $order_values[] = $revision_count;
-    }
-    if (table_has_column($pdo, 'orders', 'current_revision_count')) {
-        $order_columns[] = 'current_revision_count';
-        $order_values[] = 0;
-    }
-    if (table_has_column($pdo, 'orders', 'total_allowed_revisions')) {
-        $order_columns[] = 'total_allowed_revisions';
-        $order_values[] = $revision_count;
-    }
-    if (table_has_column($pdo, 'orders', 'status')) {
-        $order_columns[] = 'status';
-        $order_values[] = $package === 'panel' ? 'completed' : 'pending';
+    // Welcome Email logic
+    try {
+        require_once __DIR__ . '/../core/mailer.php';
+        qrk_send_welcome_email($email, $name);
+    } catch (Throwable $mail_err) {
+        error_log('WELCOME_MAIL_ERROR: ' . $mail_err->getMessage());
     }
 
-    $order_columns_sql = implode(', ', array_map(static fn(string $col): string => "`{$col}`", $order_columns));
-    $order_placeholders = implode(', ', array_fill(0, count($order_values), '?'));
-    $stmt = $pdo->prepare("INSERT INTO orders ({$order_columns_sql}) VALUES ({$order_placeholders})");
-    $stmt->execute($order_values);
-    $order_id = (int)$pdo->lastInsertId();
-
-    if (table_exists($pdo, 'payments')) {
-        $package_price = resolve_package_price($pdo, $package);
-        $payment_columns = [];
-        $payment_values = [];
-
-        if (table_has_column($pdo, 'payments', 'user_id')) {
-            $payment_columns[] = 'user_id';
-            $payment_values[] = $user_id;
-        }
-        if (table_has_column($pdo, 'payments', 'order_id')) {
-            $payment_columns[] = 'order_id';
-            $payment_values[] = $order_id;
-        }
-        if (table_has_column($pdo, 'payments', 'transaction_id')) {
-            $payment_columns[] = 'transaction_id';
-            $payment_values[] = 'ORD-' . date('YmdHis') . '-' . $order_id . '-' . random_int(1000, 9999);
-        }
-        if (table_has_column($pdo, 'payments', 'amount')) {
-            $payment_columns[] = 'amount';
-            $payment_values[] = $package_price;
-        }
-        if (table_has_column($pdo, 'payments', 'currency')) {
-            $payment_columns[] = 'currency';
-            $payment_values[] = 'TRY';
-        }
-        if (table_has_column($pdo, 'payments', 'type')) {
-            $payment_columns[] = 'type';
-            $payment_values[] = 'order';
-        }
-        if (table_has_column($pdo, 'payments', 'payment_type')) {
-            $payment_columns[] = 'payment_type';
-            $payment_values[] = 'order';
-        }
-        if (table_has_column($pdo, 'payments', 'status')) {
-            $payment_columns[] = 'status';
-            $payment_values[] = 'success';
-        }
-        if (table_has_column($pdo, 'payments', 'payment_details')) {
-            $payment_columns[] = 'payment_details';
-            $payment_values[] = json_encode(
-                [
-                    'source' => 'register',
-                    'package' => $package,
-                    'digital_profile_active' => $is_digital_profile_active,
-                ],
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-        }
-
-        if (!empty($payment_columns)) {
-            $payment_columns_sql = implode(', ', array_map(static fn(string $col): string => "`{$col}`", $payment_columns));
-            $payment_placeholders = implode(', ', array_fill(0, count($payment_values), '?'));
-            $stmt_payment = $pdo->prepare("INSERT INTO payments ({$payment_columns_sql}) VALUES ({$payment_placeholders})");
-            $stmt_payment->execute($payment_values);
-        }
-    }
-
+    $profile_photo_path = upload_profile_photo_file($_FILES['panel_photo'] ?? [], $user_id);
     $slug = generate_unique_profile_slug($pdo, $panel_display_name !== '' ? $panel_display_name : $name);
     $public_profile_url = project_base_url_from_request() . '/kartvizit.php?slug=' . rawurlencode($slug);
     $dynamic_qr_url = build_dynamic_qr_url($public_profile_url);
@@ -607,10 +508,6 @@ try {
         }
     }
 
-    if (table_has_column($pdo, 'profiles', 'order_id')) {
-        $profile_columns[] = 'order_id';
-        $profile_values[] = $order_id;
-    }
     if (table_has_column($pdo, 'profiles', 'bio')) {
         $profile_columns[] = 'bio';
         $profile_values[] = $panel_bio;
@@ -635,13 +532,14 @@ try {
         $profile_columns[] = 'photo_path';
         $profile_values[] = $profile_photo_path;
     }
-    if (table_has_column($pdo, 'profiles', 'qr_path') && $is_digital_profile_active) {
+    if (table_has_column($pdo, 'profiles', 'qr_path')) {
         $profile_columns[] = 'qr_path';
         $profile_values[] = $dynamic_qr_url;
     }
     if (table_has_column($pdo, 'profiles', 'is_active')) {
+        // Hesap oluşurken profil taslak kalır; dijital aktivasyon sipariş ile açılır.
         $profile_columns[] = 'is_active';
-        $profile_values[] = $is_digital_profile_active ? 1 : 0;
+        $profile_values[] = 0;
     }
 
     $profile_columns_sql = implode(', ', array_map(static fn(string $col): string => "`{$col}`", $profile_columns));
@@ -650,8 +548,7 @@ try {
     $stmt->execute($profile_values);
     $profile_id = (int)$pdo->lastInsertId();
 
-    $can_insert_social_links = $is_digital_profile_active
-        && table_exists($pdo, 'social_links')
+    $can_insert_social_links = table_exists($pdo, 'social_links')
         && table_has_column($pdo, 'social_links', 'profile_id')
         && table_has_column($pdo, 'social_links', 'platform')
         && table_has_column($pdo, 'social_links', 'url');
@@ -664,15 +561,37 @@ try {
     }
 
     $pdo->commit();
-    redirect_with_fallback('../auth/login.php?success=register');
+
+    // KVKK onayını audit log'a kaydet
+    if ($kvkk_approved && table_exists($pdo, 'system_logs')) {
+        try {
+            $ip  = $_SERVER['REMOTE_ADDR'] ?? null;
+            $ua  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+            $pdo->prepare(
+                "INSERT INTO system_logs (user_id, action, ip_address, user_agent) VALUES (?, 'kvkk_consent', ?, ?)"
+            )->execute([$user_id, $ip, $ua]);
+        } catch (Throwable $log_err) {
+            error_log('kvkk_log_error: ' . $log_err->getMessage());
+        }
+    }
+
+    // Session fixation saldırısına karşı: yeni session ID oluştur
+    session_regenerate_id(true);
+
+    $_SESSION['user_id'] = $user_id;
+    $_SESSION['user_name'] = $name;
+    $_SESSION['user_role'] = 'customer';
+    unset($_SESSION['default_order_package']);
+
+    redirect_with_fallback('../customer/packages.php?status=registered');
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
     $message = (string)$e->getMessage();
-    if (str_starts_with($message, 'logo_') || str_starts_with($message, 'profile_photo_')) {
-        redirect_register_error($message, 3);
+    if (str_starts_with($message, 'profile_photo_')) {
+        redirect_register_error($message, 2);
     }
 
     if ((string)$e->getCode() === '23000') {

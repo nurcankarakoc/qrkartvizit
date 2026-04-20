@@ -20,6 +20,18 @@ try {
     $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS has_digital_profile TINYINT(1) DEFAULT 0;");
     $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS has_qr_code TINYINT(1) DEFAULT 0;");
     $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS is_active TINYINT(1) DEFAULT 1;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_label VARCHAR(100) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS short_label VARCHAR(60) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS description_text TEXT NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS included_features_json TEXT NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS excluded_features_json TEXT NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_title VARCHAR(150) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_subtitle VARCHAR(255) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_badge VARCHAR(120) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_price_text VARCHAR(120) NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_features_json TEXT NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_note TEXT NULL;");
+    $pdo->exec("ALTER TABLE packages ADD COLUMN IF NOT EXISTS register_panel_text TEXT NULL;");
 
     // 0. Ensure base tables exist (safe no-op if already created)
     $pdo->exec("CREATE TABLE IF NOT EXISTS `payments` (

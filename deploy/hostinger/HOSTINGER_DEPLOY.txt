@@ -1,0 +1,37 @@
+HOSTINGER DEPLOY CHECKLIST
+
+Prepared package:
+- public_html/   -> upload all files inside this folder to Hostinger public_html
+- database/database.sql -> import to MySQL using phpMyAdmin
+
+1) Database setup
+- Create MySQL database and user in Hostinger hPanel
+- Import deploy/hostinger/database/database.sql into that database
+
+2) Upload files
+- Open File Manager in hPanel
+- Go to public_html
+- Upload everything from deploy/hostinger/public_html
+
+3) Configure environment
+- In public_html/.env set production values:
+  APP_ENV=production
+  APP_DEBUG=false
+  APP_URL=https://your-domain.com
+  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS with Hostinger credentials
+- You can copy values from public_html/.env.production.example
+
+4) Folder permissions
+- Ensure these folders are writable by PHP:
+  assets/uploads/profiles
+  assets/uploads/logos
+  assets/uploads/drafts
+- Recommended permission: 755 (if upload fails, try 775)
+
+5) Final checks
+- Visit /auth/login.php and /auth/register.php
+- Test profile image upload
+- Test customer profile save + QR preview/update
+
+Optional hardening:
+- If possible, keep .env outside public_html and adapt core/db.php to read parent .env first.

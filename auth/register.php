@@ -1,6 +1,7 @@
 <?php
 require_once '../core/db.php';
 require_once '../core/security.php';
+require_once '../core/customer_access.php';
 ensure_session_started();
 
 $register_error_key = trim((string)($_GET['error'] ?? ''));
@@ -32,7 +33,7 @@ unset($_SESSION['register_old_input']);
 
 $register_error_step = (int)($_SESSION['register_error_step'] ?? 1);
 unset($_SESSION['register_error_step']);
-$register_initial_step = $register_error_message !== '' ? max(1, min(3, $register_error_step)) : 1;
+$register_initial_step = 1;
 
 if (!function_exists('register_old')) {
     function register_old(string $key, string $default = ''): string
@@ -43,10 +44,24 @@ if (!function_exists('register_old')) {
     }
 }
 
-$register_selected_package = register_old('package', 'smart');
-if (!in_array($register_selected_package, ['classic', 'smart', 'panel'], true)) {
-    $register_selected_package = 'smart';
+$register_package_catalog = qrk_get_all_package_definitions($pdo);
+$register_active_package_catalog = array_filter(
+    $register_package_catalog,
+    static fn(array $package): bool => (bool)($package['is_active'] ?? true)
+);
+if ($register_active_package_catalog === []) {
+    $register_active_package_catalog = $register_package_catalog;
 }
+
+$register_available_package_slugs = array_keys($register_active_package_catalog);
+$register_selected_package = register_old('package', 'smart');
+if (!in_array($register_selected_package, $register_available_package_slugs, true)) {
+    $register_selected_package = in_array('smart', $register_available_package_slugs, true)
+        ? 'smart'
+        : (string)(array_key_first($register_active_package_catalog) ?? 'classic');
+}
+
+$register_selected_package_meta = $register_active_package_catalog[$register_selected_package] ?? reset($register_active_package_catalog);
 
 $register_social_platforms = $register_old_input['social_platforms'] ?? [];
 $register_social_urls = $register_old_input['social_urls'] ?? [];
@@ -81,7 +96,10 @@ if (!is_array($register_social_customs)) {
         }
 
         body {
-            background: #f8fafc;
+            background:
+                radial-gradient(circle at top left, rgba(166, 128, 63, 0.10), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(10, 47, 47, 0.12), transparent 34%),
+                linear-gradient(180deg, #f4f1ea 0%, #f8fafc 36%, #eef3f7 100%);
             color: #1e293b;
             font-family: 'Inter', sans-serif;
         }
@@ -93,9 +111,12 @@ if (!is_array($register_social_customs)) {
         }
 
         .auth-sidebar {
-            background: var(--navy-blue);
+            background:
+                radial-gradient(circle at 18% 18%, rgba(197, 160, 89, 0.22), transparent 24%),
+                radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.08), transparent 18%),
+                linear-gradient(160deg, #061c1c 0%, #0a2f2f 52%, #103c3c 100%);
             color: #fff;
-            padding: 3rem;
+            padding: 2rem;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -104,27 +125,46 @@ if (!is_array($register_social_customs)) {
         }
 
         .auth-sidebar-content {
-            margin-top: 4rem;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 2;
         }
 
         .auth-sidebar h2 {
-            font-size: 2.2rem;
+            font-size: 2.45rem;
             font-weight: 800;
-            margin-bottom: 2rem;
-            line-height: 1.2;
+            margin-bottom: 1.25rem;
+            line-height: 1.12;
+            letter-spacing: -0.03em;
+        }
+
+        .sidebar-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.45rem 0.85rem;
+            border-radius: 999px;
+            border: 1px solid rgba(166, 128, 63, 0.3);
+            background: rgba(166, 128, 63, 0.1);
+            color: var(--gold-light);
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            box-shadow: 0 0 20px rgba(166, 128, 63, 0.15);
         }
 
         .benefit-list {
             list-style: none;
-            margin-top: 3rem;
+            margin-top: 2rem;
         }
 
         .benefit-list li {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            font-size: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
             opacity: 0.9;
         }
 
@@ -132,27 +172,104 @@ if (!is_array($register_social_customs)) {
             color: var(--gold);
         }
 
+        .sidebar-proof-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin-top: 2rem;
+        }
+
+        .sidebar-proof-card {
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+        .sidebar-proof-card:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-3px);
+            border-color: rgba(166,128,63,0.3);
+        }
+
+        .sidebar-proof-value {
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -0.03em;
+        }
+
+        .sidebar-proof-label {
+            margin-top: 0.2rem;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.72);
+            line-height: 1.4;
+        }
+
+        .sidebar-quote {
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+            color: rgba(255,255,255,0.8);
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+
         .auth-main {
-            padding: 6rem 2.25rem 0.2rem;
+            padding: 1.5rem;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
-            background: #fff;
+            background: transparent;
             overflow-y: auto;
+            max-height: 100vh;
         }
 
         .form-container {
             width: 100%;
-            max-width: 760px;
-            padding-top: 0;
+            max-width: 860px;
+            padding: 2.25rem;
+            border-radius: 32px;
+            border: 1px solid rgba(166, 128, 63, 0.15);
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 
+                0 30px 100px rgba(10, 47, 47, 0.1),
+                0 0 50px rgba(166, 128, 63, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at top right, rgba(166, 128, 63, 0.12), transparent 22%),
+                linear-gradient(180deg, rgba(255,255,255,0.68), rgba(255,255,255,0.92));
+            pointer-events: none;
+        }
+
+        .form-container > * {
+            position: relative;
+            z-index: 1;
         }
 
         /* STEPPER STYLES */
         .stepper {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
             position: relative;
+            padding: 0.6rem 0.75rem;
+            border-radius: 20px;
+            border: 1px solid #edf2f7;
+            background: rgba(248, 250, 252, 0.92);
         }
 
         .stepper::before {
@@ -213,20 +330,162 @@ if (!is_array($register_social_customs)) {
 
         .step-item.active .step-label { color: var(--navy-blue); }
 
+        .intro-stage {
+            display: grid;
+            grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .intro-primary,
+        .intro-secondary {
+            border-radius: 20px;
+            padding: 1rem;
+        }
+
+        .intro-primary {
+            background:
+                radial-gradient(circle at top left, rgba(166, 128, 63, 0.16), transparent 24%),
+                linear-gradient(155deg, #ffffff 0%, #fbfcfd 44%, #f6f8fb 100%);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+        }
+
+        .intro-secondary {
+            background:
+                linear-gradient(180deg, rgba(10, 47, 47, 0.96), rgba(8, 34, 34, 0.96));
+            border: 1px solid rgba(10, 47, 47, 0.18);
+            color: #fff;
+            box-shadow: 0 20px 40px rgba(6, 28, 28, 0.18);
+        }
+
+        .intro-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(166, 128, 63, 0.1);
+            color: #8a6428;
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .intro-lead {
+            margin: 0.5rem 0 0;
+            color: #475569;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            max-width: 42rem;
+        }
+
+        .intro-value-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .intro-value-card {
+            padding: 0.95rem 1rem;
+            border-radius: 18px;
+            border: 1px solid #e5e7eb;
+            background: rgba(248, 250, 252, 0.88);
+        }
+
+        .intro-value-card strong {
+            display: block;
+            color: var(--navy-blue);
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+
+        .intro-value-card span {
+            display: block;
+            margin-top: 0.35rem;
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.55;
+        }
+
+        .intro-process-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .intro-process-list {
+            margin: 1rem 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .intro-process-item {
+            display: grid;
+            grid-template-columns: 42px 1fr;
+            gap: 0.8rem;
+            align-items: flex-start;
+        }
+
+        .intro-process-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .intro-process-copy strong {
+            display: block;
+            color: #fff;
+            font-size: 0.92rem;
+            font-weight: 800;
+        }
+
+        .intro-process-copy p {
+            margin: 0.15rem 0 0;
+            color: rgba(255,255,255,0.72);
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+
+        .intro-note {
+            margin-top: 0.75rem;
+            padding: 0.85rem 1.1rem;
+            border-radius: 18px;
+            border: 1px solid rgba(166, 128, 63, 0.25);
+            background: linear-gradient(135deg, #fffcf5 0%, #fffefb 100%);
+            color: #7c5d23;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(166, 128, 63, 0.05);
+        }
+
         .form-header {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .form-header h1 {
-            font-size: 2.15rem;
+            font-size: 1.75rem;
             font-weight: 800;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.2rem;
             color: var(--navy-blue);
         }
 
         .form-header p {
             color: #64748b;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .form-error-banner {
@@ -262,17 +521,19 @@ if (!is_array($register_social_customs)) {
         }
 
         .package-card {
-            border: 2px solid #f1f5f9;
+            border: 1px solid #e2e8f0;
             border-radius: 16px;
-            padding: 1.05rem;
+            padding: 0.85rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             text-align: left;
-            min-height: 200px;
+            min-height: auto;
             display: flex;
             flex-direction: column;
             gap: 0.45rem;
+            background: #fff;
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
         }
 
         .package-card input {
@@ -281,14 +542,24 @@ if (!is_array($register_social_customs)) {
         }
 
         .package-card:hover {
-            border-color: #cbd5e1;
-            transform: translateY(-3px);
+            border-color: #d1d9e6;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
         }
 
         .package-card.active {
             border-color: var(--gold);
-            background: rgba(166, 128, 63, 0.02);
-            box-shadow: 0 10px 20px rgba(166, 128, 63, 0.05);
+            background: #fffdf7;
+            box-shadow:
+                0 0 0 2px rgba(202, 138, 4, 0.28),
+                0 12px 24px rgba(202, 138, 4, 0.14);
+        }
+
+        .package-card:focus-within {
+            border-color: #d4a748;
+            box-shadow:
+                0 0 0 2px rgba(212, 167, 72, 0.24),
+                0 10px 20px rgba(15, 23, 42, 0.08);
         }
 
         .package-card h4 {
@@ -357,15 +628,20 @@ if (!is_array($register_social_customs)) {
             line-height: 1.4;
         }
 
+        #step-id-3,
+        #step-3 {
+            display: none !important;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
+            gap: 1.25rem 1rem;
+            margin-bottom: 1rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .form-group label {
@@ -378,20 +654,22 @@ if (!is_array($register_social_customs)) {
 
         .form-control {
             width: 100%;
-            padding: 0.8rem 1.2rem;
+            padding: 0.75rem 1.1rem;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 1rem;
+            border-radius: 14px;
+            font-size: 0.95rem;
             color: #1e293b;
-            transition: all 0.2s;
-            background: #f8fafc;
+            transition: all 0.2s ease;
+            background: #fdfdfd;
         }
 
         .form-control:focus {
             outline: none;
             border-color: var(--gold);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(166, 128, 63, 0.1);
+            box-shadow: 
+                0 0 0 4px rgba(166, 128, 63, 0.08),
+                0 10px 20px rgba(10, 47, 47, 0.03);
         }
 
         .file-upload-box {
@@ -719,16 +997,20 @@ if (!is_array($register_social_customs)) {
 
         .btn-register-submit, .btn-next {
             flex: 2;
-            background: var(--navy-blue);
+            background:
+                linear-gradient(135deg, #082a2a, #0f4343) padding-box,
+                linear-gradient(135deg, rgba(247, 233, 191, 0.98), rgba(166, 128, 63, 0.95)) border-box;
             color: #fff;
-            padding: 0.95rem 1rem;
-            border: none;
-            border-radius: 14px;
-            font-size: 1rem;
-            font-weight: 700;
+            padding: 1.1rem 1rem;
+            border: 1px solid transparent;
+            border-radius: 18px;
+            font-size: 1.05rem;
+            font-weight: 800;
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 15px 35px rgba(7, 36, 36, 0.2),
+                0 0 15px rgba(166, 128, 63, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -739,10 +1021,10 @@ if (!is_array($register_social_customs)) {
             flex: 1;
             background: #fff;
             color: var(--navy-blue);
-            padding: 0.95rem 1rem;
+            padding: 1.1rem 1rem;
             border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            font-size: 1rem;
+            border-radius: 18px;
+            font-size: 1.05rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
@@ -757,8 +1039,10 @@ if (!is_array($register_social_customs)) {
 
         .btn-register-submit:hover, .btn-next:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
-            background: var(--navy-dark);
+            box-shadow: 0 18px 32px rgba(7, 36, 36, 0.22);
+            background:
+                linear-gradient(135deg, #0b3434, #145353) padding-box,
+                linear-gradient(135deg, rgba(247, 233, 191, 1), rgba(166, 128, 63, 1)) border-box;
         }
 
         .btn-prev:hover {
@@ -783,6 +1067,7 @@ if (!is_array($register_social_customs)) {
             .auth-layout { grid-template-columns: 1fr; }
             .auth-sidebar { display: none; }
             .auth-main { padding: 3rem 1.5rem; }
+            .intro-stage { grid-template-columns: 1fr; }
         }
 
         @media (max-height: 900px) and (min-width: 1025px) {
@@ -800,6 +1085,7 @@ if (!is_array($register_social_customs)) {
             .package-grid { grid-template-columns: 1fr; }
             .package-card { min-height: auto; }
             .form-grid { grid-template-columns: 1fr; }
+            .intro-value-grid { grid-template-columns: 1fr; }
             .panel-config-grid { grid-template-columns: 1fr; }
             .panel-social-row { grid-template-columns: 1fr; }
             .panel-social-actions { flex-direction: column; align-items: flex-start; }
@@ -813,7 +1099,7 @@ if (!is_array($register_social_customs)) {
             .auth-main {
                 padding: 1.25rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
             }
-            .form-container { padding-top: 0; }
+            .form-container { padding: 1.1rem; }
             .form-header h1 { font-size: 2rem; }
             .step-actions { flex-direction: column; }
             .btn-register-submit, .btn-next, .btn-prev { width: 100%; min-height: 44px; }
@@ -826,6 +1112,16 @@ if (!is_array($register_social_customs)) {
             .package-card { padding: 1rem; }
             .file-upload-box { padding: 1.25rem; }
         }
+
+        @media (max-width: 360px) {
+            .auth-main { padding: 1rem 0.75rem calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
+            .form-container { padding: 0.85rem; }
+            .form-header h1 { font-size: 1.5rem; }
+            .form-header p { font-size: 0.88rem; }
+            .stepper { gap: 0.5rem; }
+        }
+
+        input, select, textarea { font-size: 16px !important; }
     </style>
 </head>
 <body>
@@ -833,37 +1129,45 @@ if (!is_array($register_social_customs)) {
     <div class="auth-layout">
         <div class="auth-sidebar">
             <a href="../index.php" class="back-link">
-                <i data-lucide="arrow-left" style="width: 16px;"></i> Anasayfaya Dön
+                    <i data-lucide="arrow-left" style="width: 16px;"></i> Anasayfaya Dön
             </a>
-            <div class="auth-sidebar-content">
-                <h2>Yeni Nesil <br>Dijital Dünyaya <br>Hoş Geldiniz</h2>
-                <p style="opacity: 0.7; font-size: 1.1rem; margin-top: 1rem;">Binlerce profesyonelin tercihi olan Zerosoft QR sistemiyle tanışın.</p>
-                
-                <ul class="benefit-list">
-                    <li><i data-lucide="check-circle-2"></i> Dinamik Profil Paneli</li>
-                    <li><i data-lucide="check-circle-2"></i> Tek Tıkla Rehbere Kaydetme</li>
-                    <li><i data-lucide="check-circle-2"></i> Otomatik QR Kod Üretimi</li>
-                    <li><i data-lucide="check-circle-2"></i> Profesyonel Kartvizit Baskısı</li>
-                </ul>
-                <div style="margin-top: 4rem; width: 60px; height: 6px; background: var(--gold); border-radius: 10px;"></div>
-            </div>
+                <div class="auth-sidebar-content">
+                    <span class="sidebar-kicker">Premium Müşteri Deneyimi</span>
+                    <h2>Kurumsal kartvizit sürecinizi dijital kaliteyle başlatın</h2>
+                    <p style="opacity: 0.8; font-size: 1.02rem; margin-top: 1rem; line-height: 1.8;">
+                        Zerosoft; fiziksel kartvizit, dijital profil, QR paylaşımı ve yönetim panelini tek bir profesyonel deneyimde birleştirir.
+                    </p>
+
+                    <ul class="benefit-list">
+                        <li><i data-lucide="check-circle-2"></i> Dinamik Profil Paneli</li>
+                        <li><i data-lucide="check-circle-2"></i> Tek Tıkla Rehbere Kaydetme</li>
+                        <li><i data-lucide="check-circle-2"></i> Otomatik QR Kod Üretimi</li>
+                        <li><i data-lucide="check-circle-2"></i> Profesyonel Kartvizit Baskısı</li>
+                    </ul>
+
+                    <div class="sidebar-proof-grid">
+                        <article class="sidebar-proof-card">
+                            <div class="sidebar-proof-value">Tek panel</div>
+                            <div class="sidebar-proof-label">Hesap, paket kararı ve sipariş süreci tek yerde yönetilir.</div>
+                        </article>
+                        <article class="sidebar-proof-card">
+                            <div class="sidebar-proof-value">Şeffaf akış</div>
+                            <div class="sidebar-proof-label">Paket içeriğini görmeden karar vermeniz beklenmez.</div>
+                        </article>
+                    </div>
+
+                    <div class="sidebar-quote">
+                        “İlk izlenim sadece tasarımla değil, kullanıcıya hissettirdiğiniz güvenle oluşur.”
+                    </div>
+                </div>
         </div>
 
         <main class="auth-main">
             <div class="form-container">
-                <!-- PROGRESS STEPPER -->
                 <div class="stepper">
                     <div class="step-item active" id="step-id-1">
                         <div class="step-dot">1</div>
-                        <div class="step-label">Paket</div>
-                    </div>
-                    <div class="step-item" id="step-id-2">
-                        <div class="step-dot">2</div>
-                        <div class="step-label">Hesap</div>
-                    </div>
-                    <div class="step-item" id="step-id-3">
-                        <div class="step-dot">3</div>
-                        <div class="step-label">Detaylar</div>
+                        <div class="step-label">Hesap Oluştur</div>
                     </div>
                 </div>
 
@@ -876,66 +1180,21 @@ if (!is_array($register_social_customs)) {
                     <input type="hidden" name="digital_profile_enabled" id="digital-profile-enabled" value="1">
                     <input type="hidden" name="current_step" id="current-step-input" value="<?php echo (int)$register_initial_step; ?>">
                     
-                    <!-- STEP 1: PACKAGE -->
+                    <!-- STEP 1: ACCOUNT -->
                     <div class="form-step active" id="step-1">
                         <div class="form-header">
-                            <h1>Paketinizi Seçin</h1>
-                            <p>İhtiyacınıza en uygun özelliklere sahip paketi belirleyin.</p>
+                            <h1>Başvurunuzu oluşturun</h1>
+                            <p>Temel bilgilerinizi girerek hesabınızı açın. Başvuruyu tamamladıktan sonra doğrudan paket seçimine geçecek, ardından satın alma adımından devam edeceksiniz.</p>
                         </div>
 
-                        <div class="package-grid">
-                            <label class="package-card <?php echo $register_selected_package === 'classic' ? 'active' : ''; ?>" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="classic" <?php echo $register_selected_package === 'classic' ? 'checked' : ''; ?>>
-                                <h4>Klasik</h4>
-                                <span class="price">799 &#8378;</span>
-                                <p class="package-subtitle">Sadece Baskı (dijital panel yok)</p>
-                                <ul class="package-meta-list">
-                                    <li>Standart fiziksel kartvizit baskısı</li>
-                                    <li>2 revize hakkı</li>
-                                    <li>Kurumsal logo ve temel tasarım desteği</li>
-                                </ul>
-                            </label>
-                            <label class="package-card <?php echo $register_selected_package === 'smart' ? 'active' : ''; ?>" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="smart" <?php echo $register_selected_package === 'smart' ? 'checked' : ''; ?>>
-                                <span class="package-badge">EN ÇOK TERCİH EDİLEN</span>
-                                <h4>Akıllı</h4>
-                                <span class="price">1.299 &#8378;</span>
-                                <p class="package-subtitle">Panel + Baskı + Dinamik QR</p>
-                                <ul class="package-meta-list">
-                                    <li>Dijital profil sitesi + fiziksel baskı birlikte</li>
-                                    <li>Dinamik QR ile bilgi güncelleme</li>
-                                    <li>2 revize hakkı ve panelden kolay yönetim</li>
-                                </ul>
-                            </label>
-                            <label class="package-card <?php echo $register_selected_package === 'panel' ? 'active' : ''; ?>" onclick="selectPackage(this)">
-                                <input type="radio" name="package" value="panel" <?php echo $register_selected_package === 'panel' ? 'checked' : ''; ?>>
-                                <h4>Sadece Panel</h4>
-                                <span class="price">499 &#8378;/yıl</span>
-                                <p class="package-subtitle">Sadece Dijital Kartvizit Deneyimi</p>
-                                <ul class="package-meta-list">
-                                    <li>Fiziksel baskı olmadan tamamen dijital profil</li>
-                                    <li>QR ile profil paylaşımı ve panel yönetimi</li>
-                                    <li>Yıllık yenileme modeli</li>
-                                </ul>
-                            </label>
-                        </div>
-
-                        <p class="package-note">
-                            Dijital profil isteyenler için en kapsamlı seçenek Akıllı pakettir.
-                        </p>
-
-                        <div class="step-actions">
-                            <button type="button" class="btn-next" onclick="nextStep(2)">
-                                Devam Et <i data-lucide="arrow-right"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- STEP 2: ACCOUNT -->
-                    <div class="form-step" id="step-2">
-                        <div class="form-header">
-                            <h1>Hesap Bilgileri</h1>
-                            <p>Profilinizi yönetmek için gerekli bilgileri girin.</p>
+                        <div class="intro-primary" style="margin-bottom:1rem;">
+                            <span class="intro-kicker">
+                                <i data-lucide="shield-check" style="width:14px; height:14px;"></i>
+                                Hızlı Başlangıç
+                            </span>
+                            <p class="intro-lead" style="margin-top:0.85rem;">
+                                Bu adımda yalnızca hesabınızı açıyoruz. Başvurudan hemen sonra paket seçimi açılır ve satın alma akışı oradan ilerler. Böylece ilk adım kısa, temiz ve profesyonel kalır.
+                            </p>
                         </div>
 
                         <div class="form-grid">
@@ -952,7 +1211,7 @@ if (!is_array($register_social_customs)) {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Telefon Numarası</label>
-                                <input type="tel" name="phone" class="form-control" placeholder="0532 ..." value="<?php echo htmlspecialchars(register_old('phone')); ?>">
+                                <input type="tel" name="phone" class="form-control" placeholder="0532 000 00 00" value="<?php echo htmlspecialchars(register_old('phone')); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Şifre Belirleyin</label>
@@ -961,156 +1220,16 @@ if (!is_array($register_social_customs)) {
                         </div>
 
                         <div class="step-actions">
-                            <button type="button" class="btn-prev" onclick="prevStep(1)">Geri</button>
-                            <button type="button" class="btn-next" onclick="nextStep(3)">
-                                Devam Et <i data-lucide="arrow-right"></i>
+                            <button type="submit" class="btn-register-submit">
+                                Hesabı Oluştur <i data-lucide="check" style="vertical-align: middle; margin-left: 0.5rem;"></i>
                             </button>
                         </div>
-                    </div>
 
-                    <!-- STEP 3: CARD DETAILS -->
-                    <div class="form-step" id="step-3">
-                        <div class="form-header">
-                            <h1>Kartvizit Özellikleri</h1>
-                            <p>Tasarım tercihlerinizi ve varsa logonuzu ekleyin.</p>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Şirket Adı</label>
-                                <input type="text" name="company_name" class="form-control" placeholder="Zerosoft Teknoloji" value="<?php echo htmlspecialchars(register_old('company_name')); ?>">
-                            </div>
-                            <div class="form-group">
-                                <label>Mesleki Unvan</label>
-                                <input type="text" name="job_title" class="form-control" placeholder="Yazılım Geliştirici" value="<?php echo htmlspecialchars(register_old('job_title')); ?>">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Kurumsal Logo (Varsa)</label>
-                            <div class="file-upload-box" id="logo-dropzone" onclick="triggerFileInput('logo-file')">
-                                <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: #94a3b8; margin-bottom: 0.5rem;"></i>
-                                <p id="file-name">Logo dosyasını sürükleyin veya seçin</p>
-                                <img id="logo-preview-thumb" class="file-preview-thumb" alt="Logo önizleme" hidden>
-                                <div class="file-upload-actions">
-                                    <button type="button" class="file-action-btn secondary" id="logo-preview-btn" onclick="event.stopPropagation(); previewSelectedImage('logo-file');" disabled>Görüntüle</button>
-                                    <button type="button" class="file-action-btn" onclick="event.stopPropagation(); triggerFileInput('logo-file')">Dosya Seç</button>
-                                </div>
-                                <input type="file" name="logo" id="logo-file" hidden accept="image/jpeg,image/png,image/webp" onchange="handleSelectedFile('logo-file', 'file-name', 'logo-preview-btn', 'logo-preview-thumb', 'Logo dosyasını sürükleyin veya seçin')">
-                            </div>
-                            <p class="input-help-text">JPG, PNG veya WEBP, maksimum 5 MB.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Tasarım İstekleriniz (Renk, Stil vb.)</label>
-                            <textarea name="design_notes" class="form-control" rows="3" placeholder="Örn: Siyah zemin üzerine altın yaldızlı logomuz olsun..."><?php echo htmlspecialchars(register_old('design_notes')); ?></textarea>
-                        </div>
-
-                        <div class="panel-config-box" id="digital-panel-config">
-                            <div class="panel-config-header">
-                                <div class="panel-config-title">Dijital Panel Ayarları</div>
-                                <span class="panel-state-badge active" id="panel-state-badge">Aktif</span>
-                            </div>
-                            <p class="panel-state-text" id="panel-state-text">
-                                Seçtiğiniz pakette dijital profil paneli kullanılabilir. Aşağıdaki bilgileri doldurarak profilinizi daha hızlı yayına alabilirsiniz.
-                            </p>
-                            <div class="panel-disabled-note" id="panel-disabled-note" style="display:none;">
-                                Klasik pakette dijital panel kapalıdır. Dijital panel için Akıllı veya Sadece Panel seçin.
-                            </div>
-
-                            <div id="panel-enabled-fields">
-                                <div class="panel-config-grid">
-                                    <div class="form-group">
-                                        <label>Panelde Görünecek İsim</label>
-                                        <input type="text" name="panel_display_name" id="panel-display-name" class="form-control" placeholder="Örn: Mehmet Yılmaz" value="<?php echo htmlspecialchars(register_old('panel_display_name')); ?>">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Panel Tema Rengi</label>
-                                        <div class="theme-color-row">
-                                            <select name="theme_color" id="theme-color" class="form-control" onchange="syncThemeColorFromSelect(this)">
-                                                <option value="#0A2F2F" <?php echo register_old('theme_color', '#0A2F2F') === '#0A2F2F' ? 'selected' : ''; ?>>Gece Lacivert</option>
-                                                <option value="#065F46" <?php echo register_old('theme_color') === '#065F46' ? 'selected' : ''; ?>>Zümrüt</option>
-                                                <option value="#0F766E" <?php echo register_old('theme_color') === '#0F766E' ? 'selected' : ''; ?>>Turkuaz</option>
-                                                <option value="#0EA5E9" <?php echo register_old('theme_color') === '#0EA5E9' ? 'selected' : ''; ?>>Açık Mavi</option>
-                                                <option value="#1D4ED8" <?php echo register_old('theme_color') === '#1D4ED8' ? 'selected' : ''; ?>>Mavi</option>
-                                                <option value="#2563EB" <?php echo register_old('theme_color') === '#2563EB' ? 'selected' : ''; ?>>Kraliyet Mavi</option>
-                                                <option value="#4F46E5" <?php echo register_old('theme_color') === '#4F46E5' ? 'selected' : ''; ?>>İndigo</option>
-                                                <option value="#7C3AED" <?php echo register_old('theme_color') === '#7C3AED' ? 'selected' : ''; ?>>Mor</option>
-                                                <option value="#9333EA" <?php echo register_old('theme_color') === '#9333EA' ? 'selected' : ''; ?>>Viyole</option>
-                                                <option value="#C026D3" <?php echo register_old('theme_color') === '#C026D3' ? 'selected' : ''; ?>>Fuşya</option>
-                                                <option value="#DB2777" <?php echo register_old('theme_color') === '#DB2777' ? 'selected' : ''; ?>>Pembe</option>
-                                                <option value="#BE123C" <?php echo register_old('theme_color') === '#BE123C' ? 'selected' : ''; ?>>Kırmızı</option>
-                                                <option value="#EA580C" <?php echo register_old('theme_color') === '#EA580C' ? 'selected' : ''; ?>>Turuncu</option>
-                                                <option value="#CA8A04" <?php echo register_old('theme_color') === '#CA8A04' ? 'selected' : ''; ?>>Amber</option>
-                                                <option value="#15803D" <?php echo register_old('theme_color') === '#15803D' ? 'selected' : ''; ?>>Orman Yeşili</option>
-                                                <option value="#0F172A" <?php echo register_old('theme_color') === '#0F172A' ? 'selected' : ''; ?>>Gece Siyahı</option>
-                                                <option value="#334155" <?php echo register_old('theme_color') === '#334155' ? 'selected' : ''; ?>>Antrasit</option>
-                                                <option value="#4B5563" <?php echo register_old('theme_color') === '#4B5563' ? 'selected' : ''; ?>>Gri</option>
-                                                <option value="#FFFFFF" <?php echo register_old('theme_color') === '#FFFFFF' ? 'selected' : ''; ?>>Beyaz</option>
-                                            </select>
-                                            <input type="text" name="theme_color_custom" id="theme-color-custom" class="form-control" placeholder="#0A2F2F" maxlength="7" value="<?php echo htmlspecialchars(register_old('theme_color_custom', register_old('theme_color', '#0A2F2F'))); ?>" oninput="syncThemeColorFromText(this)" onblur="syncThemeColorFromText(this, true)">
-                                        </div>
-                                        <div class="theme-color-preview">
-                                            <span id="theme-color-swatch" class="theme-color-swatch"></span>
-                                            <span id="theme-color-code"><?php echo htmlspecialchars(register_old('theme_color', '#0A2F2F')); ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Dijital Kartvizit Profil Fotoğrafı (Opsiyonel)</label>
-                                    <div class="file-upload-box compact" id="panel-photo-dropzone" onclick="triggerFileInput('panel-photo-file')">
-                                        <i data-lucide="image-plus" style="width: 30px; height: 30px; color: #94a3b8; margin-bottom: 0.45rem;"></i>
-                                        <p id="panel-photo-file-name">Profil fotoğrafını sürükleyin veya seçin</p>
-                                        <img id="panel-photo-preview-thumb" class="file-preview-thumb" alt="Profil fotoğrafı önizleme" hidden>
-                                        <div class="file-upload-actions">
-                                            <button type="button" class="file-action-btn secondary" id="panel-photo-preview-btn" onclick="event.stopPropagation(); previewSelectedImage('panel-photo-file');" disabled>Görüntüle</button>
-                                            <button type="button" class="file-action-btn" onclick="event.stopPropagation(); triggerFileInput('panel-photo-file')">Dosya Seç</button>
-                                        </div>
-                                        <input type="file" name="panel_photo" id="panel-photo-file" hidden accept="image/jpeg,image/png,image/webp" onchange="handleSelectedFile('panel-photo-file', 'panel-photo-file-name', 'panel-photo-preview-btn', 'panel-photo-preview-thumb', 'Profil fotoğrafını sürükleyin veya seçin')">
-                                    </div>
-                                    <p class="input-help-text">Kare görsel önerilir (ör: 800x800). JPG, PNG veya WEBP, maksimum 5 MB.</p>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Kısa Profil Biyografisi</label>
-                                    <textarea name="panel_bio" id="panel-bio" class="form-control" rows="2" placeholder="Uzmanlık alanlarınızı ve sunduğunuz hizmetleri kısa bir metinle anlatın."><?php echo htmlspecialchars(register_old('panel_bio')); ?></textarea>
-                                </div>
-
-                                <div class="panel-config-grid">
-                                    <div class="form-group">
-                                        <label>Web Sitesi</label>
-                                        <input type="url" name="panel_website" class="form-control" placeholder="https://ornek.com" value="<?php echo htmlspecialchars(register_old('panel_website')); ?>">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>İş Adresi</label>
-                                        <input type="text" name="panel_address" class="form-control" placeholder="İl, ilçe, mahalle veya açık adres" value="<?php echo htmlspecialchars(register_old('panel_address')); ?>">
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Hızlı İletişim Linkleri (Opsiyonel)</label>
-                                    <div class="panel-social-list" id="register-social-links-container">
-                                    </div>
-                                    <div class="panel-social-actions">
-                                        <button type="button" class="panel-social-add" id="add-register-social-link">+ Link Ekle</button>
-                                        <span class="panel-social-help">Instagram, LinkedIn, X/Twitter, Telegram, YouTube veya özel platform girebilirsiniz.</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="checkbox-group">
+                        <div class="checkbox-group" style="margin-top: 1rem;">
                             <input type="checkbox" id="kvkk" name="kvkk_approved" value="1" required>
                             <label for="kvkk">
                                 <a href="#" id="kvkk-open" class="kvkk-link">KVKK Aydınlatma Metni</a>'ni okudum ve onaylıyorum.
                             </label>
-                        </div>
-
-                        <div class="step-actions">
-                            <button type="button" class="btn-prev" onclick="prevStep(2)">Geri</button>
-                            <button type="submit" class="btn-register-submit">
-                                Siparişi Tamamla <i data-lucide="check" style="vertical-align: middle; margin-left: 0.5rem;"></i>
-                            </button>
                         </div>
                     </div>
 
@@ -1139,7 +1258,7 @@ if (!is_array($register_social_customs)) {
     </div>
 
     <div class="kvkk-modal-overlay" id="file-preview-modal" aria-hidden="true">
-        <div class="kvkk-modal" role="dialog" aria-modal="true" aria-labelledby="file-preview-title" style="max-width: 560px;">
+        <div class="kvkk-modal" role="dialog" aria-modal="true" aria-labelledby="file-preview-title" style="max-width: min(90vw, 560px);">
             <div class="kvkk-modal-header">
                 <h3 class="kvkk-modal-title" id="file-preview-title">Görsel Önizleme</h3>
                 <button type="button" class="kvkk-modal-close" id="file-preview-close">Kapat</button>
@@ -1159,7 +1278,10 @@ if (!is_array($register_social_customs)) {
         const oldRegisterSocialPlatforms = <?php echo json_encode(array_values($register_social_platforms), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         const oldRegisterSocialUrls = <?php echo json_encode(array_values($register_social_urls), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         const oldRegisterSocialCustoms = <?php echo json_encode(array_values($register_social_customs), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-        const digitalPackages = ['smart', 'panel'];
+        const registerPackageCatalog = <?php echo json_encode($register_active_package_catalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const registerPackageNotes = <?php echo json_encode(array_map(static fn(array $package): string => (string)($package['register_note'] ?? ''), $register_active_package_catalog), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const registerPackagePanelTexts = <?php echo json_encode(array_map(static fn(array $package): string => (string)($package['register_panel_text'] ?? ''), $register_active_package_catalog), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const digitalPackages = Object.keys(registerPackageCatalog).filter((slug) => Boolean(registerPackageCatalog[slug]?.has_digital_profile));
         const SOCIAL_PLATFORM_OPTIONS = [
             { value: 'instagram', label: 'Instagram' },
             { value: 'linkedin', label: 'LinkedIn' },
@@ -1189,6 +1311,53 @@ if (!is_array($register_social_customs)) {
             return selected ? selected.value : 'smart';
         }
 
+        function getPreferredRegisterPackage() {
+            if (registerPackageCatalog.smart) return 'smart';
+            const available = Object.keys(registerPackageCatalog);
+            return available.length > 0 ? available[0] : 'classic';
+        }
+
+        function renderPackageCards() {
+            const packageGrid = document.querySelector('.package-grid');
+            if (!packageGrid) return;
+
+            const selectedPackage = getSelectedPackage() || getPreferredRegisterPackage();
+            const cardsHtml = Object.entries(registerPackageCatalog).map(([slug, definition]) => {
+                const badge = definition.register_badge
+                    ? `<span class="package-badge">${escapeHtml(definition.register_badge)}</span>`
+                    : '';
+                const price = definition.register_price_text
+                    ? `<span class="price">${escapeHtml(definition.register_price_text)}</span>`
+                    : '';
+                const features = Array.isArray(definition.register_features)
+                    ? definition.register_features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')
+                    : '';
+
+                return `
+                    <label class="package-card ${selectedPackage === slug ? 'active' : ''}" onclick="selectPackage(this)">
+                        <input type="radio" name="package" value="${escapeHtml(slug)}" ${selectedPackage === slug ? 'checked' : ''}>
+                        ${badge}
+                        <h4>${escapeHtml(definition.register_title || definition.label || slug)}</h4>
+                        ${price}
+                        <p class="package-subtitle">${escapeHtml(definition.register_subtitle || '')}</p>
+                        <ul class="package-meta-list">${features}</ul>
+                    </label>
+                `;
+            }).join('');
+
+            packageGrid.innerHTML = cardsHtml;
+            document.querySelectorAll('input[name="package"]').forEach((input) => {
+                input.addEventListener('change', updateDigitalPanelUI);
+            });
+            updatePackageNote(selectedPackage);
+        }
+
+        function updatePackageNote(packageSlug) {
+            const noteEl = document.querySelector('.package-note');
+            if (!noteEl) return;
+            noteEl.textContent = registerPackageNotes[packageSlug] || '';
+        }
+
         function syncCurrentStepInput() {
             const stepInput = document.getElementById('current-step-input');
             if (stepInput) {
@@ -1200,7 +1369,7 @@ if (!is_array($register_social_customs)) {
             document.querySelectorAll('.form-step').forEach((stepEl) => stepEl.classList.remove('active'));
             document.querySelectorAll('.step-item').forEach((itemEl) => itemEl.classList.remove('active', 'completed'));
 
-            for (let i = 1; i <= 3; i++) {
+            for (let i = 1; i <= 2; i++) {
                 const stepCard = document.getElementById(`step-id-${i}`);
                 if (!stepCard) continue;
                 if (i < currentStep) stepCard.classList.add('completed');
@@ -1317,12 +1486,14 @@ if (!is_array($register_social_customs)) {
             if (selectedPackage === 'panel') {
                 text.textContent = 'Sadece Panel paketinde dijital kartvizit siteniz aktif olur. Bu ayarlar profilinizi doğrudan yayına hazırlar.';
             } else if (selectedPackage === 'smart') {
-                text.textContent = 'Akıllı pakette dijital panel ve baskı birlikte gelir. Bu bölümdeki bilgiler hem panelde hem QR hedef sayfasında kullanılabilir.';
+                text.textContent = '1000 Baskı + 1 Yıllık Erişim paketinde dijital panel ve fiziksel baskı birlikte gelir. 1000 baskı dahildir ve 1 yıllık erişim tek ödeme ile tanımlanır.';
             } else {
                 text.textContent = 'Klasik pakette dijital panel bulunmaz. Bu nedenle aşağıdaki dijital panel alanları pasif durumdadır.';
             }
 
             disabledNote.style.display = isDigitalActive ? 'none' : 'block';
+            text.textContent = registerPackagePanelTexts[selectedPackage] || text.textContent;
+            updatePackageNote(selectedPackage);
             enabledFields.style.display = isDigitalActive ? 'block' : 'none';
 
             enabledFields.querySelectorAll('input, textarea, select, button').forEach((field) => {
@@ -1381,6 +1552,7 @@ if (!is_array($register_social_customs)) {
             document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
             card.classList.add('active');
             card.querySelector('input').checked = true;
+            updatePackageNote(card.querySelector('input') ? card.querySelector('input').value : getSelectedPackage());
             updateDigitalPanelUI();
         }
 
@@ -1552,6 +1724,8 @@ if (!is_array($register_social_customs)) {
                 URL.revokeObjectURL(objectUrl);
             };
         }
+
+        renderPackageCards();
 
         document.querySelectorAll('input[name="package"]').forEach((input) => {
             input.addEventListener('change', updateDigitalPanelUI);

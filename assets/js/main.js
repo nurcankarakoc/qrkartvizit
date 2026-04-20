@@ -2,28 +2,24 @@
 document.addEventListener('DOMContentLoaded', () => {
     const menuBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
+    const closeMenu = () => {
+        if (!menuBtn || !navLinks) {
+            return;
+        }
+        navLinks.classList.remove('mobile-open');
+        menuBtn.setAttribute('aria-expanded', 'false');
+        document.body.classList.remove('nav-open');
+    };
 
     if(menuBtn && navLinks) {
-        const closeMenu = () => {
-            navLinks.style.display = 'none';
-            menuBtn.setAttribute('aria-expanded', 'false');
-        };
-
         const openMenu = () => {
-            navLinks.style.display = 'flex';
-            navLinks.style.flexDirection = 'column';
-            navLinks.style.position = 'absolute';
-            navLinks.style.top = '100%';
-            navLinks.style.left = '0';
-            navLinks.style.width = '100%';
-            navLinks.style.background = 'rgba(6, 9, 19, 0.95)';
-            navLinks.style.padding = '1rem';
-            navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+            navLinks.classList.add('mobile-open');
             menuBtn.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('nav-open');
         };
 
         const toggleMenu = () => {
-            if (navLinks.style.display === 'flex') {
+            if (navLinks.classList.contains('mobile-open')) {
                 closeMenu();
                 return;
             }
@@ -38,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.addEventListener('click', (event) => {
             if (window.innerWidth > 768) {
+                closeMenu();
                 return;
             }
             if (!menuBtn.contains(event.target) && !navLinks.contains(event.target)) {
@@ -53,57 +50,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if(target) {
                 target.scrollIntoView({ behavior: 'smooth' });
                 if(window.innerWidth <= 768 && navLinks) {
-                    navLinks.style.display = 'none';
+                    closeMenu();
                 }
             }
         });
     });
 
-    // Testimonial Slider Logic
-    const testimonials = document.querySelectorAll('.testimonial-item');
-    const dots = document.querySelectorAll('.dot');
-    const sliderContainer = document.querySelector('.testimonial-slider-wrapper');
-    let currentIndex = 0;
-    let sliderInterval;
-    const intervalTime = 3000;
 
-    function showTestimonial(index) {
-        testimonials.forEach(t => t.classList.remove('active'));
-        dots.forEach(d => d.classList.remove('active'));
-
-        testimonials[index].classList.add('active');
-        dots[index].classList.add('active');
-        currentIndex = index;
-    }
-
-    function nextTestimonial() {
-        let nextIndex = (currentIndex + 1) % testimonials.length;
-        showTestimonial(nextIndex);
-    }
-
-    function startSlider() {
-        sliderInterval = setInterval(nextTestimonial, intervalTime);
-    }
-
-    function stopSlider() {
-        clearInterval(sliderInterval);
-    }
-
-    if (sliderContainer) {
-        startSlider();
-
-        sliderContainer.addEventListener('mouseenter', stopSlider);
-        sliderContainer.addEventListener('mouseleave', startSlider);
-        sliderContainer.addEventListener('touchstart', stopSlider);
-        sliderContainer.addEventListener('touchend', startSlider);
-
-        dots.forEach(dot => {
-            dot.addEventListener('click', () => {
-                const index = parseInt(dot.getAttribute('data-index'));
-                showTestimonial(index);
-            });
-        });
-    }
 
     // How It Works Grid Highlight & Progress Logic
     const steps = document.querySelectorAll('.step-card');

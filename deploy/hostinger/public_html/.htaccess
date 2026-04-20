@@ -1,0 +1,18 @@
+Options -Indexes
+
+# Block access to hidden files like .env and .git
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Extra protection for sensitive file patterns
+<FilesMatch "(^\.env$|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|README|\.md$)">
+    Require all denied
+</FilesMatch>
+
+# Basic security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

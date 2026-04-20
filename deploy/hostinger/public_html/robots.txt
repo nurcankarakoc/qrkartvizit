@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /designer/
+Disallow: /customer/
+Disallow: /core/
+Disallow: /processes/
+Disallow: /auth/login.php
+Disallow: /auth/register.php
+
+Sitemap: https://qrkartvizit.com/sitemap.xml

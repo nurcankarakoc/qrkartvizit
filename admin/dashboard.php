@@ -1,11 +1,9 @@
 <?php
-session_start();
+require_once '../core/security.php';
+ensure_session_started();
 require_once '../core/db.php';
-
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    header("Location: ../auth/login.php");
-    exit();
-}
+require_once '../core/security.php';
+require_role_or_redirect($pdo, 'admin', '../auth/login.php');
 
 function table_has_column(PDO $pdo, string $table, string $column): bool
 {
@@ -71,13 +69,6 @@ if ($has_payments) {
     $package_stats = $stmt_sales->fetchAll();
 }
 
-if ($payment_type_col !== '') {
-    $stmt_extra_rev = $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE {$payment_type_col} = 'extra_revision'");
-    $extra_rev_total = (float)$stmt_extra_rev->fetchColumn();
-} else {
-    $extra_rev_total = 0.0;
-}
-
 $total_revenue = 0.0;
 if ($has_payments) {
     $stmt_total_revenue = $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM payments");
@@ -86,15 +77,9 @@ if ($has_payments) {
 
 $stmt_status = $pdo->query("SELECT status, COUNT(*) as count FROM orders GROUP BY status");
 $status_counts = $stmt_status->fetchAll(PDO::FETCH_KEY_PAIR);
+$total_orders = (int)array_sum($status_counts);
 $pending_count = (int)(($status_counts['pending'] ?? 0) + ($status_counts['pending_design'] ?? 0) + ($status_counts['pending_payment'] ?? 0));
-
-$stmt_disputes = $pdo->query("SELECT d.*, u.name as customer_name, o.id as order_id
-                              FROM disputes d
-                              JOIN users u ON d.user_id = u.id
-                              JOIN orders o ON d.order_id = o.id
-                              WHERE d.status = 'pending'
-                              ORDER BY d.created_at DESC");
-$pending_disputes = $stmt_disputes->fetchAll();
+$completed_count = (int)($status_counts['completed'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -108,6 +93,54 @@ $pending_disputes = $stmt_disputes->fetchAll();
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .admin-stats-grid { margin-bottom: 3rem; }
+        .admin-overview-grid { grid-template-columns: 1.5fr 1fr; }
+        .admin-status-list { padding: 1rem; }
+        .admin-status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .admin-status-item:last-child { border-bottom: 0; }
+        @media (max-width: 768px) {
+            .admin-stats-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+                margin-bottom: 1.25rem;
+            }
+            .admin-overview-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+            .admin-status-list {
+                padding: 0.25rem 0;
+            }
+            .admin-status-item {
+                padding: 0.65rem 0;
+            }
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.8rem;
+                padding: 1.5rem !important;
+                margin-bottom: 1.5rem;
+            }
+            .top-bar h1 {
+                font-size: 1.6rem;
+                text-align: left;
+            }
+            .header-actions {
+                justify-content: flex-start;
+            }
+            .main-content {
+                padding: 1rem;
+            }
+        }
+    </style>
 </head>
 <body class="dashboard-body">
     <div class="dashboard-layout">
@@ -122,8 +155,8 @@ $pending_disputes = $stmt_disputes->fetchAll();
                 <ul>
                     <li class="active"><a href="dashboard.php"><i data-lucide="layout-dashboard"></i> Genel Bakış</a></li>
                     <li><a href="orders.php"><i data-lucide="shopping-cart"></i> Tüm Siparişler</a></li>
-                    <li><a href="designers.php"><i data-lucide="users"></i> Tasarımcı Yönetimi</a></li>
-                    <li><a href="disputes.php"><i data-lucide="alert-circle"></i> Uyuşmazlıklar</a></li>
+                    <li><a href="form-approvals.php"><i data-lucide="clipboard-check"></i> Form Onayları</a></li>
+                    <li><a href="packages.php"><i data-lucide="package-2"></i> Paketler</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -147,23 +180,23 @@ $pending_disputes = $stmt_disputes->fetchAll();
             </header>
 
             <div class="content-wrapper">
-                <div class="stats-grid-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-blue)); border: none;">
+                <div class="stats-grid-dashboard admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2rem;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #0d4646, #126060); border: none;">
                         <div class="stat-info">
                             <span class="label" style="color: rgba(255,255,255,0.7); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Toplam Ciro</span>
                             <span class="value" style="color: #fff; font-size: 1.8rem; font-weight: 800;"><?php echo number_format((float)$total_revenue, 2, ',', '.'); ?> TL</span>
                         </div>
-                        <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+                        <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.14); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
                             <i data-lucide="wallet" style="width: 24px; height: 24px;"></i>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Ek Revize Geliri</span>
-                            <span class="value" style="color: var(--navy-blue); font-size: 1.8rem; font-weight: 800;"><?php echo number_format($extra_rev_total, 2, ',', '.'); ?> TL</span>
+                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Toplam Sipari?</span>
+                            <span class="value" style="color: var(--navy-blue); font-size: 1.8rem; font-weight: 800;"><?php echo $total_orders; ?></span>
                         </div>
                         <div style="width: 50px; height: 50px; background: rgba(166, 128, 63, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
-                            <i data-lucide="refresh-cw" style="width: 24px; height: 24px;"></i>
+                            <i data-lucide="shopping-bag" style="width: 24px; height: 24px;"></i>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -177,35 +210,35 @@ $pending_disputes = $stmt_disputes->fetchAll();
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Aktif Uyuşmazlık</span>
-                            <span class="value" style="color: #ef4444; font-size: 1.8rem; font-weight: 800;"><?php echo count($pending_disputes); ?></span>
+                            <span class="label" style="color: var(--text-muted); font-weight:600; font-size: 0.85rem; display:block; margin-bottom:0.5rem;">Tamamlanan Sipari?</span>
+                            <span class="value" style="color: #059669; font-size: 1.8rem; font-weight: 800;"><?php echo $completed_count; ?></span>
                         </div>
-                        <div style="width: 50px; height: 50px; background: rgba(239, 68, 68, 0.05); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #ef4444;">
-                            <i data-lucide="alert-triangle" style="width: 24px; height: 24px;"></i>
+                        <div style="width: 50px; height: 50px; background: rgba(5, 150, 105, 0.08); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #059669;">
+                            <i data-lucide="badge-check" style="width: 24px; height: 24px;"></i>
                         </div>
                     </div>
                 </div>
 
-                <div class="dashboard-tables" style="grid-template-columns: 1.5fr 1fr;">
+                <div class="dashboard-tables admin-overview-grid">
                     <section class="table-container">
-                        <div class="table-header"><h2>Paket Bazli Satislar</h2></div>
-                        <table class="data-table">
+                        <div class="table-header"><h2>Paket Bazlı Satışlar</h2></div>
+                        <table class="data-table responsive-table">
                             <thead>
                                 <tr>
                                     <th>Paket</th>
-                                    <th>Satis Adedi</th>
+                                    <th>Satış Adedi</th>
                                     <th>Paket Geliri</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($package_stats)): ?>
-                                    <tr><td colspan="3" class="empty-state">Satis kaydi bulunamadi.</td></tr>
+                                    <tr><td colspan="3" class="empty-state">Satış kaydı bulunamadı.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($package_stats as $stat): ?>
                                         <tr>
-                                            <td><strong><?php echo htmlspecialchars((string)$stat['package']); ?></strong></td>
-                                            <td><?php echo (int)$stat['order_count']; ?></td>
-                                            <td><?php echo number_format((float)$stat['order_total'], 2, ',', '.'); ?> TL</td>
+                                            <td data-label="Paket"><strong><?php echo htmlspecialchars((string)$stat['package']); ?></strong></td>
+                                            <td data-label="Satış Adedi"><?php echo (int)$stat['order_count']; ?></td>
+                                            <td data-label="Paket Geliri"><?php echo number_format((float)$stat['order_total'], 2, ',', '.'); ?> TL</td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -214,61 +247,30 @@ $pending_disputes = $stmt_disputes->fetchAll();
                     </section>
 
                     <section class="table-container">
-                        <div class="table-header"><h2>Siparis Durumlari</h2></div>
-                        <div style="padding: 1rem;">
+                        <div class="table-header"><h2>Sipariş Durumları</h2></div>
+                        <div class="admin-status-list">
                             <?php
                             $status_map = [
                                 'pending' => 'Havuzda Bekleyen',
-                                'pending_design' => 'Tasarim Havuzunda',
-                                'pending_payment' => 'Odeme Bekliyor',
-                                'designing' => 'Tasarlaniyor',
+                                'pending_design' => 'Tasarım Havuzunda',
+                                'pending_payment' => 'Ödeme Bekliyor',
+                                'designing' => 'Tasarlanıyor',
                                 'awaiting_approval' => 'Onay Bekliyor',
-                                'revision_requested' => 'Revize Surecinde',
-                                'approved' => 'Basima Hazir',
+                                'revision_requested' => 'Revize Sürecinde',
+                                'approved' => 'Basıma Hazır',
                                 'printing' => 'Baskida',
                                 'shipping' => 'Kargoda',
                                 'completed' => 'Tamamlanan',
-                                'disputed' => 'Uyusmazlikta',
                             ];
                             foreach ($status_map as $key => $label):
                                 $count = (int)($status_counts[$key] ?? 0);
                             ?>
-                                <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                                <div class="admin-status-item">
                                     <span><?php echo htmlspecialchars($label); ?></span>
                                     <span class="badge" style="background: #f1f5f9; color: #1e293b;"><?php echo $count; ?></span>
                                 </div>
                             <?php endforeach; ?>
                         </div>
-                    </section>
-                </div>
-
-                <div class="dashboard-tables" style="margin-top: 2rem;">
-                    <section class="table-container">
-                        <div class="table-header"><h2>Aktif Uyusmazliklar</h2></div>
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Musteri</th>
-                                    <th>Itiraz</th>
-                                    <th>Tarih</th>
-                                    <th>Aksiyon</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($pending_disputes)): ?>
-                                    <tr><td colspan="4" class="empty-state">Aktif uyusmazlik bulunmuyor.</td></tr>
-                                <?php else: ?>
-                                    <?php foreach ($pending_disputes as $dispute): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars((string)$dispute['customer_name']); ?></td>
-                                            <td><span style="font-size: 0.85rem; color: #64748b;"><?php echo htmlspecialchars(substr((string)$dispute['reason'], 0, 80)); ?>...</span></td>
-                                            <td><?php echo date('d.m.Y', strtotime((string)$dispute['created_at'])); ?></td>
-                                            <td><a href="disputes.php" class="btn-action primary">Incele</a></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
                     </section>
                 </div>
             </div>
